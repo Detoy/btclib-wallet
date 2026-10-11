@@ -28,8 +28,9 @@ name: integration-bitcoind
 # firmware release or an app whose screens changed wording, none of which
 # is a claim a branch's review has anything to do with. Here those
 # testcases skip for want of BTCLIB_HWI or BTCLIB_HWI_SIGN, and so do the
-# electrs testcases, which are integration-electrs.yml's, for want of
-# BTCLIB_ELECTRS. Each switch's skip message starts `set BTCLIB_`:
+# electrs and florestad testcases, which are integration-electrs.yml's and
+# integration-floresta.yml's, for want of BTCLIB_ELECTRS or
+# BTCLIB_FLORESTAD. Each switch's skip message starts `set BTCLIB_`:
 # `skip-reason-prefix` below exempts such a skip from the check that the
 # node's own tests ran, where a testcase that skips for any other reason,
 # a missing bitcoind among them, fails it (btclib-org/.github#1419). The
@@ -94,14 +95,14 @@ jobs:
       # guix builders attested it in bitcoin-core/guix.sigs. Pinned rather
       # than resolved to "latest": a run that installs whatever is newest
       # reports the day Core released rather than the day this tree
-      # changed. integration-hwi.yml and integration-electrs.yml pin the same
-      # two values for their own tests
+      # changed. integration-hwi.yml, integration-electrs.yml and
+      # integration-floresta.yml pin the same two values for their own tests
       bitcoind-version: "31.1"
       bitcoind-sha256: >-
         b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e
       # tests/integration/conftest.py's own two switches
       integration-env-var: BTCLIB_INTEGRATION
       bitcoind-path-env-var: BTCLIB_BITCOIND
-      # the HWI and electrs testcases' skips, exempt for the reason the
-      # header gives
+      # the HWI, electrs and florestad testcases' skips, exempt for the
+      # reason the header gives
       skip-reason-prefix: "set BTCLIB_"

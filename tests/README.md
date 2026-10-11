@@ -77,10 +77,24 @@ The reorg test starts a node and a server of its own, so the reorg
 changes no other test's chain. `integration-electrs.yml`
 builds the pinned `electrs`.
 
+`ElectrumFetcher` is also run against Floresta. `florestad` follows a chain
+only through `utreexod`, so the stack is three programs, named by
+`BTCLIB_FLORESTAD` and `BTCLIB_UTREEXOD`, with no `PATH` fallback:
+
+```shell
+BTCLIB_INTEGRATION=1 BTCLIB_FLORESTAD=/path/to/florestad \
+    BTCLIB_UTREEXOD=/path/to/utreexod \
+    uv run pytest tests/integration/floresta_test.py -n0
+```
+
+`integration-floresta.yml` builds the pinned `florestad` and downloads the
+pinned `utreexod`.
+
 These tests are outside the coverage ratchet, which `pyproject.toml`
 says where it omits them. `integration-bitcoind.yml`,
-`integration-hwi.yml` and `integration-electrs.yml` run them unattended,
-and each job fails if its tests skipped rather than ran.
+`integration-hwi.yml`, `integration-electrs.yml` and
+`integration-floresta.yml` run them unattended, and each job fails if its
+tests skipped rather than ran.
 
 ## Fuzzing, and replaying a crash it finds
 
