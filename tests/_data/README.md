@@ -1164,6 +1164,44 @@ behind  0 revisions; that commit is the tip of the path
 
 ## Other projects
 
+### `tests/psbt/_data/psbt_fuzz1.hex`
+
+```text
+repo    rust-bitcoin/rust-bitcoin
+path    bitcoin/tests/data/psbt_fuzz1.hex
+commit  9aebb96fb99e8e9e019663659c6eff851a62f2ce  2024-11-26
+blob    dd3c9b7ed9d26677f2c2b1737e98224cd762227c
+ours    e8df2b34efafd8e2c87e1b62da3278d84fd48ab4
+pulled  2026-10-11
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**. License: Creative
+Commons Zero, as rust-bitcoin's `LICENSE` and the `bitcoin` crate's
+`Cargo.toml` say.
+
+A psbt in hex, added by "Fix psbt fuzz crash" as the regression input of
+an out-of-bounds index when combining psbts that hold a global xpub
+with different origins. This file and `psbt_fuzz2.hex` are that pair.
+`tests/psbt/psbt_crash_inputs_test.py` reads both, and
+`fuzz/corpus/fuzz_psbt/rust_bitcoin_psbt_fuzz1.bin` is its octets.
+
+### `tests/psbt/_data/psbt_fuzz2.hex`
+
+```text
+repo    rust-bitcoin/rust-bitcoin
+path    bitcoin/tests/data/psbt_fuzz2.hex
+commit  9aebb96fb99e8e9e019663659c6eff851a62f2ce  2024-11-26
+blob    8a33cf01c83924d371860946cf15a1bd8cf76fd0
+ours    56508bdf6f436e5175ef0b00165fe1e75237c326
+pulled  2026-10-11
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**. The second psbt of
+the pair above, with the same license; its seed is
+`fuzz/corpus/fuzz_psbt/rust_bitcoin_psbt_fuzz2.bin`.
+
 ### `tests/mnemonic/_data/bip39_test_vectors.json`
 
 ```text
@@ -1793,8 +1831,8 @@ Against a pinned upstream blob:
 - identical byte for byte: `bip39_test_vectors.json`,
   `send_and_receive_test_vectors.json` and `bip375_test_vectors.json`.
 - identical but for a trailing newline: `vectors.json`,
-  `sign_verify_vectors.json`, the BIP322 vector files and the dlcspecs files
-  under `tests/dlc/_data/`.
+  `sign_verify_vectors.json`, `psbt_fuzz1.hex`, `psbt_fuzz2.hex`, the BIP322
+  vector files and the dlcspecs files under `tests/dlc/_data/`.
 - JSON-equal, reformatted: `test_JP_BIP39.json`.
 - identical, and recorded from a Trezor emulator: `trezor-addresses.json`.
 

@@ -31,7 +31,8 @@ not, and propagates to atheris as the finding it is.
 The seed corpus is one of the BIP174 vectors
 `tests/psbt/_data/bip174_test_vectors.json` carries, in both forms: the
 octets `serialize` writes, and the base64 the vector itself is published
-as.
+as. It also holds the two psbts that crashed rust-bitcoin's combiner,
+`tests/psbt/_data/psbt_fuzz1.hex` and `psbt_fuzz2.hex`, as octets.
 """
 
 from __future__ import annotations

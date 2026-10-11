@@ -23,8 +23,8 @@ refused as any other character outside it would be. A decode that could
 raise would make the harness answer for the decoder rather than for the
 parser.
 
-A crash on hostile text is a defect in `parse` itself, never in this
-harness: nothing validates or normalizes between the decode and the
+A crash on hostile text is a defect in `parse` or in the printer, never in
+this harness: nothing validates or normalizes between the decode and the
 call. `BTClibException` and `BTClibEccException` are what `parse`
 answers a character outside the charset, an unknown function, a bad key
 and a checksum that does not match with, so that family is caught below
@@ -35,18 +35,30 @@ is.
 `network` and `prv_keys` are left at their defaults: both are the
 caller's own arguments rather than anything the descriptor says.
 
-The seed corpus is two of BIP380's own descriptors, as
-`tests/_data/descriptor_checksums.json` carries them, each with its own
-checksum appended: unlike a seed with the checksum stripped, a mutation
-almost never reaches past `strip_checksum` on one that carries it, so
-one seed of each shape would spend the fuzzer's budget differently, and
-a seed here keeps its checksum because a stranger pasting a descriptor
-does too.
+**What `parse` accepts prints to a normal form: `str(parse(text))`, parsed
+again, prints itself.** It can differ from the text. Among other things it
+writes public keys for private ones, hex in lowercase, numbers without
+leading zeros, no checksum, the sugared fragment names (`pk(K)` for
+`c:pk_k(K)`) and every hardened step in the symbol of the key's last
+hardened step. The assertion below reads the printed text again: a second
+`parse` that refuses it, or prints it differently, is a defect in the
+printer or the parser and propagates to atheris as a finding.
+
+The seed corpus: each `bipNNN_*` seed is one of BIP NNN's examples, from
+BIP380 to BIP387 and BIP390, with its checksum.
+`ms_*` are miniscript fragments inside `wsh()` composed here from keys of
+the BIPs' examples, `own_*` a descriptor composed here, and `pk` and
+`wpkh` come from `tests/_data/descriptor_checksums.json`. The checksum is
+the BIP's own in `bip380_raw`, the file's in `pk` and `wpkh`, and
+BIP380's `descsum_create`'s in the rest. A
+seed keeps its checksum because a stranger pasting a descriptor does
+too, at a cost: a mutation of it almost never reaches past
+`strip_checksum`.
+`tests/fuzz_corpus_test.py` holds each seed to the round trip above.
 """
 
 from __future__ import annotations
 
-import contextlib
 import sys
 
 import atheris
@@ -64,13 +76,21 @@ ENTRY_POINTS = ("btclib_wallet.descriptors.descriptors:parse",)
 def fuzz_target(data: bytes) -> None:
     """Parse `data`, decoded as text, as an output descriptor.
 
-    `BTClibException` and `BTClibEccException` are swallowed as
-    `parse`'s own refusal of malformed input; any other exception
-    propagates, which is how atheris tells a defect in `parse` from the
-    domain of input it already rejects.
+    `BTClibException` and `BTClibEccException` are `parse`'s own refusal
+    of malformed input, and end the run; any other exception propagates,
+    which is how atheris tells a defect in `parse` from the domain of
+    input it already rejects. What `parse` accepts has to print to text
+    that parses to the same text.
     """
-    with contextlib.suppress(BTClibException, BTClibEccException):
-        descriptors.parse(data.decode("utf-8", errors="replace"))
+    try:
+        parsed = descriptors.parse(data.decode("utf-8", errors="replace"))
+    except (BTClibException, BTClibEccException):
+        return
+    printed = str(parsed)
+    reprinted = str(descriptors.parse(printed))
+    if reprinted != printed:
+        msg = f"{printed!r} parses and prints as {reprinted!r}"
+        raise AssertionError(msg)
 
 
 def main() -> None:

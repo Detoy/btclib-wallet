@@ -41,3 +41,5 @@ tests/dlc/_data/test_vectors/two_of_five_oracle_numerical_with_diff_test.json -t
 tests/dlc/_data/bitcoin_s_oracle_vectors.json -text
 tests/dlc/_data/test_vectors/enum_and_numerical_with_diff_3_of_5_test.json -text
 tests/dlc/_data/test_vectors/three_of_five_oracle_numerical_with_diff_test.json -text
+tests/psbt/_data/psbt_fuzz1.hex -text
+tests/psbt/_data/psbt_fuzz2.hex -text

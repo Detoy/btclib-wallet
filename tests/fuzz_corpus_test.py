@@ -27,7 +27,8 @@ raising `BTClibException`. Where the accepting object serializes --
 or `.b58decode()` entry point -- the reserialization has to reproduce
 the seed's own bytes; where it does not (`descriptors.parse` returns a
 `Descriptor` with no wire form of its own), the seed is accepted
-parse-only and nothing else is asked of it.
+parse-only here, and `test_descriptor_seed_prints_back` below asks the
+rest.
 
 `fuzz_bip32.py` calls three entry points against the same `data`, which
 is where the price *Trying every declared entry point rather than
@@ -36,6 +37,16 @@ applied here: it does not, `BIP32KeyData.parse` requiring exactly 78
 octets and `BIP32KeyOrigin.parse` requiring at least 4, so a seed built
 for one is never mistaken for a round trip of the other by this gate,
 measured by running `_accept` over this corpus.
+
+`test_descriptor_seed_prints_back` is the descriptor half: `parse` has no
+wire form, so a descriptor seed is held to the harness's own assertion
+instead, that what `parse` prints parses to itself, and to a checksum
+that is valid. A seed in normal form prints back as written, the
+checksum aside; `_REWRITTEN_SEEDS` names the seeds that the normal form
+`fuzz/fuzz_descriptor.py` states rewrites.
+
+`test_psbt_crash_inputs_are_seeds` ties the two rust-bitcoin psbts that
+`tests/psbt/psbt_crash_inputs_test.py` reads to their `fuzz_psbt` seeds.
 
 A seed may legitimately be empty in principle -- no harness here has one
 today -- so nothing here asks a seed to be non-empty, only that no seed
@@ -52,7 +63,10 @@ from typing import Any
 import pytest
 from btclib.exceptions import BTClibException
 
-_FUZZ = Path(__file__).parent.parent / "fuzz"
+from btclib_wallet.descriptors import descriptors
+
+_TESTS = Path(__file__).parent
+_FUZZ = _TESTS.parent / "fuzz"
 _CORPUS = _FUZZ / "corpus"
 
 # the one harness whose declared entry point takes text rather than
@@ -60,6 +74,17 @@ _CORPUS = _FUZZ / "corpus"
 # btclib_wallet.descriptors.descriptors:parse, and a seed is tried the
 # same way
 _TEXT_HARNESS = "fuzz_descriptor"
+
+# the descriptor seeds the normal form of fuzz/fuzz_descriptor.py rewrites
+_REWRITTEN_SEEDS = frozenset(
+    {
+        "bip381_pk_wif",
+        "bip386_tr_pkh_leaf",
+        "bip386_tr_ranged_private",
+        "bip386_tr_tree_private",
+        "own_pkh_mixed_hardened_markers",
+    }
+)
 
 
 def _harness_paths() -> tuple[Path, ...]:
@@ -303,6 +328,38 @@ def test_accepted_seed_round_trips(harness: str, seed: Path) -> None:
         if accepted and round_trip is False
     ]
     assert not mismatches, f"{seed} does not round-trip under: {mismatches}"
+
+
+_DESCRIPTOR_SEEDS = tuple(seed for harness, seed in _SEEDS if harness == _TEXT_HARNESS)
+
+
+@pytest.mark.parametrize(
+    "seed",
+    _DESCRIPTOR_SEEDS,
+    ids=[seed.stem for seed in _DESCRIPTOR_SEEDS],
+)
+def test_descriptor_seed_prints_back(seed: Path) -> None:
+    """A descriptor seed's checksum is valid and its normal form is stable."""
+    text = seed.read_text(encoding="utf-8")
+    printed = str(descriptors.parse(text))
+    assert str(descriptors.parse(printed)) == printed
+    if seed.stem in _REWRITTEN_SEEDS:
+        assert printed != descriptors.strip_checksum(text)
+    else:
+        assert descriptors.add_checksum(printed) == text
+
+
+def test_every_rewritten_seed_exists() -> None:
+    """A name in _REWRITTEN_SEEDS that is no seed would exempt nothing."""
+    assert {seed.stem for seed in _DESCRIPTOR_SEEDS} >= _REWRITTEN_SEEDS
+
+
+@pytest.mark.parametrize("number", [1, 2])
+def test_psbt_crash_inputs_are_seeds(number: int) -> None:
+    """Each rust-bitcoin psbt vendored under tests/psbt/_data/ is a seed."""
+    vendored = _TESTS / "psbt" / "_data" / f"psbt_fuzz{number}.hex"
+    seed = _CORPUS / "fuzz_psbt" / f"rust_bitcoin_psbt_fuzz{number}.bin"
+    assert seed.read_bytes() == bytes.fromhex(vendored.read_text(encoding="ascii"))
 
 
 # ---- unit tests of the pure ast helpers, for the branches no harness trips
