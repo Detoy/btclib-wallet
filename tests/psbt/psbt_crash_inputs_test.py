@@ -5,13 +5,17 @@
 """Two psbts that crashed rust-bitcoin's combiner are read here.
 
 `psbt_fuzz1.hex` and `psbt_fuzz2.hex` are rust-bitcoin's regression
-inputs for a crash in its combiner; `tests/_data/README.md` pins and
-describes them.
+inputs for that crash; `tests/_data/README.md` pins and describes them.
 Each is well-formed on its own: a psbt with no input and no output, and
-one global xpub with an origin of one or two steps. Bitcoin Core 31.1.0's
-`decodepsbt` reads both and prints that origin as asserted below, so
-`Psbt.parse` is asked to read them, not to refuse them, and to write
-back the bytes it was given.
+one global xpub with an origin of one or two steps. Bitcoin Core 31.1.0
+reads both, and prints the origin asserted below, with:
+
+    bitcoin-cli decodepsbt "$(xxd -r -p tests/psbt/_data/psbt_fuzz1.hex |
+        base64 | tr -d '[:space:]')"
+
+and the same with `psbt_fuzz2.hex`, under `global_xpubs`. So `Psbt.parse`
+is asked to read them, not to refuse them, and to write back the bytes it
+was given.
 """
 
 from __future__ import annotations
@@ -23,9 +27,8 @@ import pytest
 from btclib_wallet.psbt import Psbt
 from tests import load_bin
 
-# the fingerprint and derivation path of the one global xpub, as
-# `decodepsbt` prints them: "08080800" and "m/11/65536", "00000000" and
-# "m/268435456"
+# the fingerprint and derivation path of the one global xpub, Core's
+# `m/11/65536` written as the list `der_path` holds
 _ORIGINS = {
     1: ("08080800", [11, 65536]),
     2: ("00000000", [268435456]),

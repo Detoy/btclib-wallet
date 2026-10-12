@@ -39,11 +39,10 @@ for one is never mistaken for a round trip of the other by this gate,
 measured by running `_accept` over this corpus.
 
 `test_descriptor_seed_prints_back` is the descriptor half: `parse` has no
-wire form, so a descriptor seed is held to the harness's own assertion
-instead, that what `parse` prints parses to itself, and to a checksum
-that is valid. A seed in normal form prints back as written, the
-checksum aside; `_REWRITTEN_SEEDS` names the seeds that the normal form
-`fuzz/fuzz_descriptor.py` states rewrites.
+wire form, so a descriptor seed is held to the normal form that
+`fuzz/fuzz_descriptor.py` states, and to a checksum that is valid. A seed
+in normal form prints back as written, the checksum aside;
+`_REWRITTEN_SEEDS` names the seeds that the normal form rewrites.
 
 `test_psbt_crash_inputs_are_seeds` ties the two rust-bitcoin psbts that
 `tests/psbt/psbt_crash_inputs_test.py` reads to their `fuzz_psbt` seeds.
@@ -75,7 +74,6 @@ _CORPUS = _FUZZ / "corpus"
 # same way
 _TEXT_HARNESS = "fuzz_descriptor"
 
-# the descriptor seeds the normal form of fuzz/fuzz_descriptor.py rewrites
 _REWRITTEN_SEEDS = frozenset(
     {
         "bip381_pk_wif",
@@ -344,7 +342,9 @@ def test_descriptor_seed_prints_back(seed: Path) -> None:
     printed = str(descriptors.parse(text))
     assert str(descriptors.parse(printed)) == printed
     if seed.stem in _REWRITTEN_SEEDS:
-        assert printed != descriptors.strip_checksum(text)
+        stripped = descriptors.strip_checksum(text)
+        assert descriptors.add_checksum(stripped) == text
+        assert printed != stripped
     else:
         assert descriptors.add_checksum(printed) == text
 

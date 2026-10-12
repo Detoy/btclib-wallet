@@ -45,10 +45,10 @@ file whose name they could take, or because the upstream name is taken:
   response has no name at all. Each takes the rpc method or the endpoint
   path that produces it.
 
-The prefix of a psbt vector file names the authority the cases answer to
--- `bip174_`, `bip370_`, `bip371_`, `bip373_`, `bip375_`, and `btclib_`
-for the ones btclib composed, which no BIP publishes and no refresh will
-ever reach.
+The prefix of a psbt `*_test_vectors.json` file names the authority the
+cases answer to -- `bip174_`, `bip370_`, `bip371_`, `bip373_`, `bip375_`,
+and `btclib_` for the ones btclib composed, which no BIP publishes and no
+refresh will ever reach.
 
 ## Reading an entry
 

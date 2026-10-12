@@ -74,13 +74,10 @@ ENTRY_POINTS = ("btclib_wallet.descriptors.descriptors:parse",)
 
 
 def fuzz_target(data: bytes) -> None:
-    """Parse `data`, decoded as text, as an output descriptor.
+    """Parse `data` as an output descriptor and print it back.
 
-    `BTClibException` and `BTClibEccException` are `parse`'s own refusal
-    of malformed input, and end the run; any other exception propagates,
-    which is how atheris tells a defect in `parse` from the domain of
-    input it already rejects. What `parse` accepts has to print to text
-    that parses to the same text.
+    A `BTClibException` or `BTClibEccException` from parsing `data` ends
+    the run; the module docstring says what propagates.
     """
     try:
         parsed = descriptors.parse(data.decode("utf-8", errors="replace"))
