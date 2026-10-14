@@ -27,9 +27,8 @@ import pytest
 from btclib_wallet.psbt import Psbt
 from tests import load_bin
 
-# the fingerprint and derivation path of the one global xpub, as the list
-# `der_path` holds it: `m/11/65536` for the first psbt, and the single
-# step 268435456 for the second
+# the fingerprint and derivation path of the one global xpub; Core's
+# `m/11/65536` for the first psbt is the list [11, 65536]
 _ORIGINS = {
     1: ("08080800", [11, 65536]),
     2: ("00000000", [268435456]),
