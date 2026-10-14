@@ -37,7 +37,8 @@ wants.
 ## The integration tests, and why they are off by default
 
 `tests/integration/` needs what this repository does not ship: a
-`bitcoind` to talk to, an `hwi` to run, a device to press a button on.
+`bitcoind` to talk to, an `hwi` to run, a device to press a button on,
+a fuzz corpus to replay.
 Each test skips itself without the switch that asks for it, and says
 which switch was off:
 
@@ -77,10 +78,24 @@ BTCLIB_INTEGRATION=1 BTCLIB_ELECTRS=/path/to/electrs \
 `bitcoind` and `electrs`, and `addopts` passes `-n auto`.
 `integration-electrs.yml` builds the pinned `electrs`.
 
+`tests/integration/qa_assets_test.py` needs a checkout of
+[bitcoin-core/qa-assets](https://github.com/bitcoin-core/qa-assets),
+Core's fuzz corpora, and replays its psbt and descriptor inputs through
+this package's parsers. `BTCLIB_QA_ASSETS` names the checkout, and is
+the module's only switch:
+
+```shell
+BTCLIB_QA_ASSETS=/path/to/qa-assets \
+    uv run pytest tests/integration/qa_assets_test.py -n 0
+```
+
+The module's docstring says how each corpus directory is read.
+
 These tests are outside the coverage ratchet, which `pyproject.toml`
 says where it omits them. `integration-bitcoind.yml`,
 `integration-hwi.yml` and `integration-electrs.yml` run them unattended,
-and each job fails if its tests skipped rather than ran.
+and each job fails if its tests skipped rather than ran. `qa-assets.yml`
+runs the replay weekly, and it fails on a directory its checkout lacks.
 
 ## Fuzzing, and replaying a crash it finds
 

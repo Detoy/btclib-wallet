@@ -2,8 +2,8 @@
 name: integration-bitcoind
 
 # The suite's one part that needs a program this repository does not ship:
-# a bitcoind to talk to. `tests/integration/` skips itself without
-# BTCLIB_INTEGRATION, so every other workflow reports those tests skipped
+# a bitcoind to talk to. The node's tests in `tests/integration/` skip
+# without BTCLIB_INTEGRATION, so every other workflow reports them skipped
 # and nothing else asks a real node whether a psbt this package built is
 # one it will relay. This is where that is asked: a disposable regtest
 # bitcoind, the account export, the funding, the spend and the broadcast.
@@ -27,14 +27,14 @@ name: integration-bitcoind
 # workflow of its own with no pull_request trigger: it can go red on a
 # firmware release or an app whose screens changed wording, none of which
 # is a claim a branch's review has anything to do with. Here those
-# testcases skip for want of BTCLIB_HWI or BTCLIB_HWI_SIGN, and so do the
-# electrs testcases, which are integration-electrs.yml's, for want of
-# BTCLIB_ELECTRS. Each switch's skip message starts `set BTCLIB_`:
-# `skip-reason-prefix` below exempts such a skip from the check that the
-# node's own tests ran, where a testcase that skips for any other reason,
-# a missing bitcoind among them, fails it (btclib-org/.github#1419). The
-# prefix also exempts the BTCLIB_INTEGRATION skip, and the check still
-# fails a run where nothing ran.
+# testcases skip for want of BTCLIB_HWI or BTCLIB_HWI_SIGN, the electrs
+# ones (integration-electrs.yml's) for want of BTCLIB_ELECTRS, and the
+# qa-assets replay (qa-assets.yml's) for want of BTCLIB_QA_ASSETS. Each
+# switch's skip message starts `set BTCLIB_`: `skip-reason-prefix` below
+# exempts such a skip from the check that the node's own tests ran, where
+# a testcase skipping for any other reason, a missing bitcoind among them,
+# fails it (btclib-org/.github#1419). The prefix also exempts the
+# BTCLIB_INTEGRATION skip, and the check still fails a run where nothing ran.
 #
 # A schedule too: the job is a required check on every pull request and on
 # the commit a merge creates, so what the weekly run asks that nothing
@@ -102,6 +102,6 @@ jobs:
       # tests/integration/conftest.py's own two switches
       integration-env-var: BTCLIB_INTEGRATION
       bitcoind-path-env-var: BTCLIB_BITCOIND
-      # the HWI and electrs testcases' skips, exempt for the reason the
-      # header gives
+      # the HWI, electrs and qa-assets testcases' skips, exempt for the
+      # reason the header gives
       skip-reason-prefix: "set BTCLIB_"

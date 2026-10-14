@@ -610,11 +610,9 @@ BTCLIB_INTEGRATION=1 BTCLIB_BITCOIND=/path/to/bitcoind \
 ```
 
 A step after it reads that report and fails the job if a regtest test
-skipped, pytest exiting 0 for a module that skipped itself. The HWI tests
-skip there by design, and so do the electrs tests, whose job is
-`integration-electrs.yml`. The step accepts a skip whose message starts
-`set BTCLIB_`, which the messages of the HWI switches and of
-`BTCLIB_ELECTRS` do.
+skipped, pytest exiting 0 for a module that skipped itself. Which tests
+skip there by design, and the skip message the step accepts, are that
+workflow's header.
 
 `integration-electrs.yml` — `ElectrumFetcher` and `EsploraFetcher` against
 Blockstream's `electrs` on a regtest `bitcoind`, a reorg included. The
@@ -659,6 +657,17 @@ branch's. A branch touching `src/btclib_wallet/hwi.py` asks for it:
 gh workflow run integration-hwi.yml --ref <branch>
 ```
 
+`qa-assets.yml` — Bitcoin Core's fuzz corpora of psbts and descriptors,
+replayed through this package's parsers. The workflow checks out
+`bitcoin-core/qa-assets` sparsely, the directories `TARGETS` in
+`tests/integration/qa_assets_test.py` names, and runs:
+
+```shell
+BTCLIB_QA_ASSETS=/path/to/qa-assets \
+    uv run --locked --no-default-groups --group test \
+    pytest tests/integration/qa_assets_test.py -n 0 --no-cov
+```
+
 `codeql.yml` has no line here: its jobs run `github/codeql-action` and no
 command of this project's, so reproducing it locally means the CodeQL CLI
 and a database rather than a `uv run`.
@@ -678,6 +687,7 @@ reliance `REVIEWING.md` provides for.
 | `integration-bitcoind` | pull request, push to main, weekly | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `codeql` | pull request, push, and weekly | the languages |
+| `qa-assets` | weekly, pull request on its paths | Core's fuzz corpora |
 | `fuzz` | weekly, and by hand before a release | — |
 | `os-ubuntu` | weekly, a release | images × interpreters |
 | `os-macos` | weekly, a release | images × interpreters |
