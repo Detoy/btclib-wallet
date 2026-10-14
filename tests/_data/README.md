@@ -77,9 +77,10 @@ to compare against says so in prose instead. The verdicts used:
   publishes is pinned to that project like any other file, and its entry
   gives both verdicts.
 
-`pulled` is the date of the btclib commit that put the current content in
-btclib's tree, from `git log --follow --diff-filter=A` there: the files
-came here with the entries, unchanged. `behind` counts upstream revisions
+`pulled` is the date the current content was taken from upstream. For a
+file that came from btclib's tree, it is the date of the btclib commit that
+added it, from `git log --follow --diff-filter=A` there; for one taken
+in this repository, the day it was. `behind` counts upstream revisions
 of that path since the pin. It is a staleness figure, not a defect: a
 vector file is a fixed set of cases and refreshing it is a decision, not a
 chore. `ref` names the branch a pin's path lives on, where that is not the
