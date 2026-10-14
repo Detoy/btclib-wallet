@@ -175,8 +175,8 @@ HdKeyPaths = MutableMapping[bytes, BIP32KeyOrigin]
 def _is_point(pub_key: bytes) -> bool:
     """Return whether the SEC octets are a point of the curve.
 
-    As in Bitcoin Core, a hybrid key (prefix 0x06 or 0x07) is a point when
-    its prefix gives the parity of its y coordinate.
+    As in Bitcoin Core, a hybrid key (prefix 0x06 or 0x07) is a point too where
+    its prefix gives the parity of y.
     """
     try:
         sec_point.point_from_octets(pub_key, hybrid=True)
@@ -196,8 +196,8 @@ def assert_valid_hd_key_paths(hd_key_paths: Mapping[bytes, BIP32KeyOrigin]) -> N
             err_msg = f"invalid public key length: {len(pub_key)}"
             raise BTClibValueError(err_msg)
         # a 78-octet key belongs in the global map, where `psbt.py` checks
-        # its point; in an input's or an output's map it is not refused here
-        # (issue btclib-org/btclib-wallet#377)
+        # its point; in an input's or an output's map,
+        # `psbt_utils._assert_valid_bip32_derivation` refuses it
         if len(pub_key) != 78 and not _is_point(pub_key):
             raise BTClibValueError("invalid public key: not a point")
         key_origin.assert_valid()
