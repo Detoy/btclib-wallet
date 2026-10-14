@@ -354,10 +354,9 @@ to, and what counters each.
 
   The rule is section 7's [*A refusal carries no
   secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret).
-  The tests that call `assert_secret_free` are in `tests/bip85_test.py`,
-  `tests/psbt/psbt_in_test.py` and `tests/psbt/psbt_utils_test.py`; they
-  call the helper in `tests/__init__.py`, not the organization's copy in
-  `tests/secret_free/`, which `tests/secret_free_test.py` tests. Moving
+  The refusal tests call the helper in `tests/__init__.py`
+  (`git grep -l assert_secret_free -- tests`), not the organization's copy
+  in `tests/secret_free/`, which `tests/secret_free_test.py` tests. Moving
   them onto it is btclib-org/btclib-wallet#396.
 - **Deserialization of untrusted data (CWE-502).** `descriptors.parse`
   and `Psbt.parse`/`Psbt.b64decode` are this package's own parsers, not a

@@ -48,9 +48,10 @@ What belongs here is everything this package does on top of them:
     does with a reply
 - the distributions published to PyPI and their provenance
 
-A refusal that prints a value that may be secret, against [*A refusal carries
-no secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret),
-belongs here.
+A refusal that prints a value that may be secret belongs here: [*A refusal
+carries no
+secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret)
+says what a refusal may print.
 
 Report it wherever you found it, though: routing a report is the
 maintainers' job, not the reporter's, and a doubt about which project
