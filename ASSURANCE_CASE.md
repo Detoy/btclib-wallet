@@ -349,7 +349,8 @@ to, and what counters each.
   The tests that call `assert_secret_free` are in `tests/bip85_test.py`,
   `tests/psbt/psbt_in_test.py` and `tests/psbt/psbt_utils_test.py`; they
   call the helper in `tests/__init__.py`, not the organization's copy in
-  `tests/secret_free/`, which `tests/secret_free_test.py` tests.
+  `tests/secret_free/`, which `tests/secret_free_test.py` tests. Moving
+  them onto it is btclib-org/btclib-wallet#396.
 - **Deserialization of untrusted data (CWE-502).** `descriptors.parse`
   and `Psbt.parse`/`Psbt.b64decode` are this package's own parsers, not a
   generic deserializer; the census under *Threat model* lists neither
