@@ -332,6 +332,15 @@ to, and what counters each.
   cannot tell a wrong password from a right one before running the
   cipher, so nothing here reports which of the two happened beyond the
   final address check.
+
+  A value in the wrong place may be a private key, so the refusals of a
+  duplicated psbt map key, of a MuSig2 key that is no point, and of a
+  partial signature and its key print at most one byte of the value,
+  which the format defines (a type byte, a key prefix), with a length or
+  an index. The `words` and `lang` of
+  `bip85.mnemonic_from_root_key` are quoted only up to 16 characters, too
+  short for a key. Each of these refusals has a test that feeds a secret
+  and finds none of it in the exception or its causes.
 - **Deserialization of untrusted data (CWE-502).** `descriptors.parse`
   and `Psbt.parse`/`Psbt.b64decode` are this package's own parsers, not a
   generic deserializer; the census under *Threat model* lists neither
