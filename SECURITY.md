@@ -146,6 +146,12 @@ used to teach and to prototype as much as to build.
 - **Randomness comes from the operating system** through the `secrets`
     module, and nothing here seeds a generator of its own.
 
+## What a refusal prints
+
+An exception, a repr or a log line here is meant to hold no secret, by the
+rule in [*A refusal carries no
+secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret).
+
 ## A backend is trusted, and not every backend alike
 
 - **Each `btclib_wallet.fetch` backend asks by default which chain it is

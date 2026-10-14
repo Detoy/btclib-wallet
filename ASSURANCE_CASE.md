@@ -351,6 +351,13 @@ to, and what counters each.
   `bip85.mnemonic_from_root_key` are quoted only up to 16 characters, too
   short for a key. Each of these refusals has a test that feeds a secret
   and finds none of it in the exception or its causes.
+
+  The rule is section 7's [*A refusal carries no
+  secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret).
+  The tests that call `assert_secret_free` are in `tests/bip85_test.py`,
+  `tests/psbt/psbt_in_test.py` and `tests/psbt/psbt_utils_test.py`; they
+  call the helper in `tests/__init__.py`, not the organization's copy in
+  `tests/secret_free/`, which `tests/secret_free_test.py` tests.
 - **Deserialization of untrusted data (CWE-502).** `descriptors.parse`
   and `Psbt.parse`/`Psbt.b64decode` are this package's own parsers, not a
   generic deserializer; the census under *Threat model* lists neither
