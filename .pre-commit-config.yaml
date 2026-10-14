@@ -27,9 +27,9 @@ ci:
   # interpreter and runs uv-lock (issue btclib-org/.github#1348).
   #
   # actionlint-shellcheck runs past pre-commit.ci's time limit.
-  # What the skip costs is nothing that decides a merge: lint.yml runs
-  # this file whole, with the command a developer runs, on every commit
-  # and every pull request
+  # What the skip costs is nothing that decides a merge -- lint.yml runs
+  # this file whole, with the command a developer runs, on every push to
+  # main and on every pull request that is not a draft
   skip: [mypy, pyroma, uv-lock, actionlint-shellcheck]
 
 repos:

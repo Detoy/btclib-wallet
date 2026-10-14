@@ -48,6 +48,10 @@ What belongs here is everything this package does on top of them:
     does with a reply
 - the distributions published to PyPI and their provenance
 
+A refusal that prints a value that may be secret, against [*A refusal carries
+no secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret),
+belongs here.
+
 Report it wherever you found it, though: routing a report is the
 maintainers' job, not the reporter's, and a doubt about which project
 owns a flaw is not a reason to keep it to yourself.
@@ -145,12 +149,6 @@ used to teach and to prototype as much as to build.
     expensive.
 - **Randomness comes from the operating system** through the `secrets`
     module, and nothing here seeds a generator of its own.
-
-## What a refusal prints
-
-An exception, a repr or a log line here is meant to hold no secret, by the
-rule in [*A refusal carries no
-secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret).
 
 ## A backend is trusted, and not every backend alike
 
