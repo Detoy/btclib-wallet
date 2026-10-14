@@ -1,0 +1,49 @@
+---
+name: api-break
+
+# The pull-request counterpart of release.yml's `public-api` job: the same
+# griffe walk, against the pull request's base commit, the answer a label,
+# `api-break` (btclib-org/.github#1674). The walk, the label and what a
+# fork's pull request gets are btclib-org/.github's
+# `reusable-api-break.yml`, called at @main so a fix there reaches this
+# tree in one landing. What stays here is the trigger, the concurrency
+# group, the permissions and the package.
+#
+# Advisory, and not a required check: the label is a signal for whoever
+# writes RELEASE_NOTES.md, and no merge waits on it. A `workflow_dispatch`
+# run starts and ends skipped, the callee's job declining every event but
+# a pull request.
+
+on:
+  pull_request:
+    # ready_for_review so a pull request marked ready gets the label its
+    # draft state withheld. closed too: the group below is at the workflow
+    # level, so a closed run enters it when the run is created and cancels
+    # a walk nobody is going to read; the callee's own job-level `if:`
+    # declines the walk itself
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+  workflow_dispatch:
+
+# least privilege for the GITHUB_TOKEN at the workflow level, elevated on
+# the calling job below
+permissions:
+  contents: read
+
+# named literally rather than through github.workflow, as everywhere else
+# here. A push supersedes the walk it overtakes; a dispatch falls back to
+# the ref
+concurrency:
+  group: api-break-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-break:
+    # a caller's permissions: block bounds the called workflow and refuses
+    # rather than trims, so the scope its job asks for is named here
+    permissions:
+      contents: read
+      pull-requests: write # the label; read-only on a fork
+    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@main
+    with:
+      # the value release.yml's `public-api` job passes
+      package: btclib_wallet
