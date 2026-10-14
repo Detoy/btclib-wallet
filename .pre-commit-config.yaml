@@ -231,6 +231,8 @@ repos:
         # file blind for good, and the difference is not theoretical -- a
         # real credential added to a file that is excluded is not seen
         # while it is excluded, and is seen now.
+        # A frozen `rev:` sha is excluded by the line filter in
+        # .secrets.baseline (btclib-org/.github#1723).
         # CONTRIBUTING.md has the command that regenerates the baseline
         args: [--baseline, .secrets.baseline]
   # a typo in a comment is cosmetic; the same typo in the README is the
