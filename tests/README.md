@@ -80,12 +80,16 @@ BTCLIB_INTEGRATION=1 BTCLIB_ELECTRS=/path/to/electrs \
 
 `tests/integration/qa_assets_test.py` needs a checkout of
 [bitcoin-core/qa-assets](https://github.com/bitcoin-core/qa-assets),
-Core's fuzz corpora, and replays its psbt and descriptor inputs through
-this package's parsers. `BTCLIB_QA_ASSETS` names the checkout, and is
-the module's only switch:
+Core's fuzz corpora, or of
+[rust-bitcoin/qa-assets](https://github.com/rust-bitcoin/qa-assets),
+rust-bitcoin's, and replays their psbt and descriptor inputs through
+this package's parsers. `BTCLIB_QA_ASSETS` names Core's checkout and
+`BTCLIB_RUST_BITCOIN_QA_ASSETS` rust-bitcoin's; each is the switch of its
+own tests, and the module has no other:
 
 ```shell
 BTCLIB_QA_ASSETS=/path/to/qa-assets \
+BTCLIB_RUST_BITCOIN_QA_ASSETS=/path/to/rust-bitcoin-qa-assets \
     uv run pytest tests/integration/qa_assets_test.py -n 0
 ```
 

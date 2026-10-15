@@ -657,13 +657,15 @@ branch's. A branch touching `src/btclib_wallet/hwi.py` asks for it:
 gh workflow run integration-hwi.yml --ref <branch>
 ```
 
-`qa-assets.yml` — Bitcoin Core's fuzz corpora of psbts and descriptors,
-replayed through this package's parsers. The workflow checks out
-`bitcoin-core/qa-assets` sparsely, the directories `TARGETS` in
+`qa-assets.yml` — the fuzz corpora of psbts and descriptors of Bitcoin
+Core and rust-bitcoin, replayed through this package's parsers. The
+workflow checks out `bitcoin-core/qa-assets` and `rust-bitcoin/qa-assets`
+sparsely, the directories `TARGETS` in
 `tests/integration/qa_assets_test.py` names, and runs:
 
 ```shell
 BTCLIB_QA_ASSETS=/path/to/qa-assets \
+BTCLIB_RUST_BITCOIN_QA_ASSETS=/path/to/rust-bitcoin-qa-assets \
     uv run --locked --no-default-groups --group test \
     pytest tests/integration/qa_assets_test.py -n 0 --no-cov
 ```
@@ -687,7 +689,7 @@ reliance `REVIEWING.md` provides for.
 | `integration-bitcoind` | pull request, push to main, weekly | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `codeql` | pull request, push, and weekly | the languages |
-| `qa-assets` | weekly, pull request on its paths | Core's fuzz corpora |
+| `qa-assets` | weekly, pull request on its paths | Core's, rust-bitcoin's |
 | `fuzz` | weekly, and by hand before a release | — |
 | `os-ubuntu` | weekly, a release | images × interpreters |
 | `os-macos` | weekly, a release | images × interpreters |

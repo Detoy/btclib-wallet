@@ -2,32 +2,36 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Bitcoin Core's fuzz corpora of psbts and descriptors, replayed here.
+"""The fuzz corpora of Bitcoin Core and rust-bitcoin, replayed here.
 
 `bitcoin-core/qa-assets` holds, per Core fuzz target, the inputs that
-target's fuzzers found interesting. Where the target reads a psbt or a
-descriptor, the same input goes to this package's parser for it. A
+target's fuzzers found interesting, and `rust-bitcoin/qa-assets` does the
+same for rust-bitcoin's. Where the target reads a psbt or a descriptor,
+the same input goes to this package's parser for it. A
 parser may refuse it with an exception of the families
 `tests/exception_family_test.py` holds; any other exception is a defect.
 btclib replays the directories its own parsers read, in its own
 `tests/integration/qa_assets_test.py`, and leaves these to this package.
 
-Skipped unless `BTCLIB_QA_ASSETS` names a qa-assets checkout:
+A source is skipped unless its variable names its checkout,
+`BTCLIB_QA_ASSETS` for Core's and `BTCLIB_RUST_BITCOIN_QA_ASSETS` for
+rust-bitcoin's:
 
     BTCLIB_QA_ASSETS=/path/to/qa-assets uv run pytest \
         tests/integration/qa_assets_test.py -n 0
 
-`qa-assets.yml` runs it weekly against qa-assets' default branch,
-sparse-checking out the directories `TARGETS` names.
+`qa-assets.yml` runs it weekly against both repositories' default
+branch, sparse-checking out the directories `TARGETS` names.
 
 `TARGETS` is the table from a qa-assets directory to the parser that
-reads it. `reading` says how Core's target, a file of `src/test/fuzz/`
-in `bitcoin/bitcoin`, reads the input. A `_deserialize` target reads an
-object off the front of the input and ignores what follows
-(`SpanReader{buffer} >> obj`), while `parse` on bytes refuses trailing
-bytes; so those rows hand `parse` a `BytesIO`, which it leaves where the
-object ends. Each parser that takes `check_validity` is replayed with it
-on and off.
+reads it. `reading` says how the source's own target reads the input: a
+file of `src/test/fuzz/` in `bitcoin/bitcoin`, or of
+`fuzz/fuzz_targets/` in `rust-bitcoin/rust-bitcoin`. A Core
+`_deserialize` target reads an object off the front of the input and
+ignores what follows (`SpanReader{buffer} >> obj`), while `parse` on bytes
+refuses trailing bytes; so those rows hand `parse` a `BytesIO`, which it
+leaves where the object ends. Each parser that takes `check_validity` is
+replayed with it on and off.
 
 The `psbt` row is replayed as Core's target draws it. That target does
 not read its input as a psbt: `FuzzedDataProvider`'s
@@ -36,6 +40,11 @@ standing for one and a backslash before any other octet ending the
 string, and `DecodeRawPSBT` reads that string as the whole of a psbt. A
 second draw, from what the first left, is the psbt the target merges
 into it. `_draws` is that draw, and both strings go to `Psbt.parse`.
+
+rust-bitcoin's `bitcoin_0_32_deserialize_psbt` hands the input to
+bitcoin 0.32's `Psbt::deserialize`, which reads a psbt off the front and
+ignores what follows, as Core's `_deserialize` targets do; so its row
+hands `parse` a `BytesIO` too.
 
 `descriptor_parse` hands `parse` the input as text, one character per
 octet, as Core's `std::string` holds it. Core parses each input twice,
@@ -100,7 +109,7 @@ def _whole(data: bytes) -> tuple[bytes, ...]:
 
 @dataclass(frozen=True)
 class Target:
-    """A qa-assets directory, how Core reads it, and the parser here."""
+    """A qa-assets directory, how its target reads it, and the parser here."""
 
     directory: str
     reading: str
@@ -109,6 +118,8 @@ class Target:
     subjects: Callable[[bytes], tuple[bytes, ...]] = _whole
     # the values of `check_validity` to replay with
     validity: tuple[bool, ...] = (True, False)
+    # whose qa-assets holds the directory
+    source: str = "bitcoin-core"
 
 
 def _front(parse: Callable[..., object]) -> Parser:
@@ -161,6 +172,13 @@ TARGETS = (
         subjects=_draws,
     ),
     Target(
+        "bitcoin_0_32_deserialize_psbt",
+        "bitcoin_0_32/deserialize_psbt.rs: Psbt::deserialize,"
+        " a psbt off the front of the input",
+        _front(Psbt.parse),
+        source="rust-bitcoin",
+    ),
+    Target(
         "descriptor_parse",
         "descriptor_parse.cpp: Parse on the input as a string, on mainnet",
         _descriptor,
@@ -169,14 +187,24 @@ TARGETS = (
 )
 
 
-@pytest.mark.parametrize("target", TARGETS, ids=lambda target: target.directory)
+# the environment variable that names a checkout, per source
+_CHECKOUTS = {
+    "bitcoin-core": "BTCLIB_QA_ASSETS",
+    "rust-bitcoin": "BTCLIB_RUST_BITCOIN_QA_ASSETS",
+}
+
+
+@pytest.mark.parametrize(
+    "target", TARGETS, ids=lambda target: f"{target.source}-{target.directory}"
+)
 def test_corpus_is_refused_in_the_libraries_own_exceptions(target: Target) -> None:
     """Every input is parsed, or refused in one of the families."""
-    checkout = os.environ.get("BTCLIB_QA_ASSETS")
+    variable = _CHECKOUTS[target.source]
+    checkout = os.environ.get(variable)
     if not checkout:
         # the prefix is what integration-bitcoind.yml exempts from its
         # check that the tests ran
-        pytest.skip("set BTCLIB_QA_ASSETS to a bitcoin-core/qa-assets checkout")
+        pytest.skip(f"set {variable} to a {target.source} qa-assets checkout")
     inputs = sorted((Path(checkout) / "fuzz_corpora" / target.directory).iterdir())
     # a renamed or emptied directory would otherwise pass by replaying nothing
     assert inputs, f"{target.directory} holds no input"

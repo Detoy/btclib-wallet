@@ -29,8 +29,9 @@ name: integration-bitcoind
 # is a claim a branch's review has anything to do with. Here those
 # testcases skip for want of BTCLIB_HWI or BTCLIB_HWI_SIGN, the electrs
 # ones (integration-electrs.yml's) for want of BTCLIB_ELECTRS, and the
-# qa-assets replay (qa-assets.yml's) for want of BTCLIB_QA_ASSETS. Each
-# switch's skip message starts `set BTCLIB_`: `skip-reason-prefix` below
+# qa-assets replay (qa-assets.yml's) for want of BTCLIB_QA_ASSETS or
+# BTCLIB_RUST_BITCOIN_QA_ASSETS. Each switch's skip message starts
+# `set BTCLIB_`: `skip-reason-prefix` below
 # exempts such a skip from the check that the node's own tests ran, where
 # a testcase skipping for any other reason, a missing bitcoind among them,
 # fails it (btclib-org/.github#1419). The prefix also exempts the
