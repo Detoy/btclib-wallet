@@ -284,7 +284,7 @@ def _runnable(path: str) -> bool:
     """Whether `path` names a file this process may execute, as it stands.
 
     It is the one test of both lookups, so that a bare name found on the
-    PATH and a name with a directory part are held to the same file.
+    PATH and a name with a directory part are held to the same test.
     """
     return pathlib.Path(path).is_file() and os.access(path, os.X_OK)
 
