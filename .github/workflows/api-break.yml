@@ -18,9 +18,8 @@ on:
   pull_request:
     # ready_for_review so a pull request marked ready gets the label its
     # draft state withheld. closed too: the group below is at the workflow
-    # level, so a closed run enters it when the run is created and cancels
-    # a walk nobody is going to read; the callee's own job-level `if:`
-    # declines the walk itself
+    # level, so a closed run enters it when the run is created; the
+    # callee's own job-level `if:` declines the walk itself
     types: [opened, reopened, synchronize, ready_for_review, closed]
   workflow_dispatch:
 
@@ -31,10 +30,12 @@ permissions:
 
 # named literally rather than through github.workflow, as everywhere else
 # here. A push supersedes the walk it overtakes; a dispatch falls back to
-# the ref
+# the ref. No push trigger, so the walk in flight is the only reading the
+# merged pull request gets, and its label is set by that walk: the closed,
+# merged run queues behind it rather than cancelling it
 concurrency:
   group: api-break-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
   api-break:
