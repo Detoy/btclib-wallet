@@ -3888,6 +3888,23 @@ def test_index_of_refuses_what_it_could_only_answer_none_for() -> None:
         descriptor.index_of("not an address")
 
 
+def test_index_of_refuses_a_last_index_that_is_no_integer() -> None:
+    """The bound is an integer, ranged descriptor or not (issue #407).
+
+    On a ranged descriptor a string, None, bytes or a float failed in
+    `range(last + 1)` with a builtin `TypeError`, and `True` bounded the
+    search at 1. A descriptor that is not ranged ignored the bound.
+    """
+    ranged = parse(f"wpkh([d34db33f/84h/0h/0h]{XPUB}/1/*)")
+    fixed = parse(f"wpkh({KEY_A})")
+    for descriptor in (ranged, fixed):
+        script_pub_key = descriptor.script_pub_key(1 if descriptor.is_ranged else 0)
+        for wrong in ("1", None, b"\x01", 1.0, True, False):
+            with pytest.raises(BTClibTypeError, match="invalid last_index type: "):
+                descriptor.index_of(script_pub_key, wrong)  # type: ignore[arg-type]
+    assert ranged.index_of(ranged.script_pub_key(1), 1) == 1
+
+
 def taproot_merkle_root_of(tree: list[tuple[int, int, bytes]]) -> bytes:
     """Return the merkle root a PSBT_OUT_TAP_TREE field folds up to.
 
