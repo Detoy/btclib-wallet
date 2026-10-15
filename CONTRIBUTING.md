@@ -688,6 +688,7 @@ reliance `REVIEWING.md` provides for.
 | `lint`, `docs` | pull request, push | — |
 | `integration-bitcoind` | pull request, push to main, weekly | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
+| `api-break` | pull request | — |
 | `codeql` | pull request, push, and weekly | the languages |
 | `qa-assets` | weekly, pull request on its paths | Core's, rust-bitcoin's |
 | `fuzz` | weekly, and by hand before a release | — |
@@ -714,10 +715,10 @@ not this file's to restate.
 
 The gates run one image on one interpreter: `ubuntu-latest`, and the
 version `.python-version` names. `claude-review` gates nothing: a review
-that gates a merge would make a model's judgement a branch rule. Why so
-little gates is the ceiling on concurrent jobs the plan puts on the whole
-organization, and `REPOSITORY.md`'s *Plan-gated settings* is where that
-lives.
+that gates a merge would make a model's judgement a branch rule. `api-break`
+gates nothing either; it only labels. Why so little gates is the ceiling on
+concurrent jobs the plan puts on the whole organization, and
+`REPOSITORY.md`'s *Plan-gated settings* is where that lives.
 
 ### Mutation testing
 
