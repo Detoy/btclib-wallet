@@ -66,6 +66,8 @@ _TPUB = "tpubDDjsCRDQ9YzyaAq9rspCfq8RZFrWoBpYnLxK6sS2hS2yukqSczgcYiur8Scx4Hd5AZa
 # a p2wsh address of nobody's wallet here: BIP173's own vector
 _ELSEWHERE = "bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3"
 
+_PUBKEY = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+
 
 def _descriptor(expression: str) -> str:
     """Return the expression with the checksum `parse` verifies."""
@@ -157,6 +159,34 @@ def test_the_chains_must_be_of_one_network() -> None:
     mainnet = parse(_descriptor(f"wpkh({_XPUB}/0/*)"))
     testnet = parse(_descriptor(f"wpkh({_TPUB}/1/*)"), "testnet")
     err_msg = r"descriptors of different networks: \['mainnet', 'testnet'\]"
+    with pytest.raises(BTClibValueError, match=err_msg):
+        DescriptorWallet([mainnet, testnet])
+
+
+def test_two_branches_may_not_hold_the_same_descriptor() -> None:
+    """Else `position_of` answers the first for both."""
+    receive = parse(_descriptor(f"wpkh({_XPUB}/0/*)"))
+    err_msg = "branches 0 and 1 hold the same descriptor"
+    with pytest.raises(BTClibValueError, match=err_msg):
+        DescriptorWallet([receive, receive])
+
+    # an apostrophe and an `h` spell the same hardened step
+    apostrophe = parse(_descriptor(f"wpkh({_XPUB}/0'/*)"))
+    hardened = parse(_descriptor(f"wpkh({_XPUB}/0h/*)"))
+    with pytest.raises(BTClibValueError, match="branches 3 and 7"):
+        DescriptorWallet({7: apostrophe, 3: hardened})
+
+    # the two chains of one account differ, so they make a wallet
+    change = parse(_descriptor(f"wpkh({_XPUB}/1/*)"))
+    assert DescriptorWallet([receive, change]).branches == (0, 1)
+
+
+def test_the_network_is_refused_before_a_repeated_descriptor() -> None:
+    """One raw key on two networks: the network is what is refused."""
+    text = _descriptor(f"wpkh({_PUBKEY})")
+    mainnet = parse(text)
+    testnet = parse(text, "testnet")
+    err_msg = "descriptors of different networks"
     with pytest.raises(BTClibValueError, match=err_msg):
         DescriptorWallet([mainnet, testnet])
 

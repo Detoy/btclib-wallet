@@ -39,6 +39,12 @@ addresses would make `address(branch, index)` a lie. `descriptors.parse`
 reads one, and a caller wanting it uses `Descriptor.script_pub_keys`
 directly.
 
+Two branches holding the same descriptor are refused too, `position_of`
+having no way to tell their scripts apart. They are compared as
+`core_import._comparable` compares them; other spellings of the same
+scripts are not caught, a key origin added to one of them for instance
+(issue #414).
+
 A parsed descriptor holds no private key -- `descriptors.parse` neuters an
 xprv to its xpub -- so a wallet is watch-only unless it is handed the
 `prv_keys` mapping that module takes: the hardened steps an xpub cannot
@@ -62,6 +68,7 @@ from typing_extensions import override
 from btclib_wallet.bip32.bip32 import BIP32Key
 from btclib_wallet.bip32.der_path import DerPath
 from btclib_wallet.bip44 import BIP44ScriptType
+from btclib_wallet.core_import import _comparable
 from btclib_wallet.descriptors.descriptors import (
     ComboDescriptor,
     Descriptor,
@@ -79,6 +86,20 @@ from btclib_wallet.wallet.wallet import _LAST_INDEX, RangedWallet
 __all__ = [
     "DescriptorWallet",
 ]
+
+
+def _assert_distinct(by_branch: Mapping[int, Descriptor]) -> None:
+    """Refuse two branches equal as `_comparable` compares them.
+
+    The module docstring says why, and what is not caught.
+    """
+    seen: dict[str, int] = {}
+    for branch, descriptor in sorted(by_branch.items()):
+        first = seen.setdefault(_comparable(descriptor), branch)
+        if first != branch:
+            err_msg = f"branches {first} and {branch} hold the same"
+            err_msg += " descriptor: position_of could not tell them apart"
+            raise BTClibValueError(err_msg)
 
 
 class DescriptorWallet(RangedWallet):
@@ -124,6 +145,8 @@ class DescriptorWallet(RangedWallet):
         if len(networks) != 1:
             err_msg = f"descriptors of different networks: {sorted(networks)}"
             raise BTClibValueError(err_msg)
+
+        _assert_distinct(by_branch)
 
         super().__init__(networks.pop())
         # sorted, so that `branches` is ascending and `position_of`
