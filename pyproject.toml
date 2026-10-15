@@ -302,7 +302,7 @@ addopts = "-ra --cov --durations=8 -n auto --dist worksteal --strict-config --st
 # as broken: strict turns it red instead of reporting xpass
 xfail_strict = true
 markers = [
-    "integration: needs an external program, opt-in via BTCLIB_INTEGRATION",
+    "integration: needs an external program or corpus, opt-in via BTCLIB_INTEGRATION, BTCLIB_QA_ASSETS or BTCLIB_RUST_BITCOIN_QA_ASSETS",
     "bindings: compares against btclib_secp256k1, so it needs it installed",
 ]
 # a deprecation warning is the early form of a break, and there is time to
@@ -393,9 +393,9 @@ extend-ignore-re = ['`[^`]*`']
 # unnamed, `--cov` measures every file the run imports, btclib included
 source = ["btclib_wallet", "tests"]
 # tests/integration is omitted because those tests skip themselves without
-# BTCLIB_INTEGRATION: their bodies would be uncovered lines of tests/ at
-# every ordinary run, which is the ratchet reporting the switch rather
-# than a defect
+# BTCLIB_INTEGRATION, BTCLIB_QA_ASSETS or BTCLIB_RUST_BITCOIN_QA_ASSETS:
+# their bodies would be uncovered lines of tests/ at every ordinary run,
+# which is the ratchet reporting the switch rather than a defect
 omit = ["*/site-packages/*", "tests/integration/*"]
 # statement coverage alone calls a half-tested `if` fully covered
 branch = true
