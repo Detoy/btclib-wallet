@@ -2,12 +2,13 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""The stack's server start survives a port taken between pick and bind.
+"""The stack's starts survive a port taken between pick and bind.
 
 `_free_port` closes the port it picked, so a process that binds it first
-makes `electrs` exit with `AddrInUse`. These tests need no `bitcoind` and
-no `electrs`: the server is a stand-in script that binds the
-`--electrum-rpc-addr` port as `electrs` does, and says `AddrInUse` and
+makes `electrs` exit with `AddrInUse`, and `bitcoind` exit with
+`Unable to bind any endpoint for RPC server` in its `debug.log`. These
+tests need no `bitcoind` and no `electrs`: each is a stand-in script that
+binds its port as the program does, and says what the program says and
 exits where it cannot. They run in every ordinary run.
 """
 
@@ -31,6 +32,7 @@ from tests.integration.conftest import (
     PortTaken,
     Stack,
     _start,
+    _start_node,
     _start_server,
     _stop,
     port_was_taken,
@@ -53,6 +55,28 @@ SERVER = textwrap.dedent(
         sys.exit(101)
     sock.listen()
     print("ready", flush=True)
+    time.sleep(60)
+    """
+)
+
+
+# the stand-in for `bitcoind`: it binds the `-rpcport` port, and otherwise
+# writes to `regtest/debug.log`, under `-datadir`, what `bitcoind` writes
+NODE = textwrap.dedent(
+    """
+    import socket, sys, time
+    from pathlib import Path
+    args = dict(a[1:].split("=", 1) for a in sys.argv[1:] if "=" in a)
+    sock = socket.socket()
+    try:
+        sock.bind(("127.0.0.1", int(args["rpcport"])))
+    except OSError:
+        log = Path(args["datadir"]) / "regtest" / "debug.log"
+        log.parent.mkdir(exist_ok=True)
+        with log.open("a") as f:
+            f.write("Unable to bind any endpoint for RPC server\\n")
+        sys.exit(1)
+    sock.listen()
     time.sleep(60)
     """
 )
@@ -230,3 +254,60 @@ def test_a_server_that_does_not_sync_is_stopped(
 
 def _not_listening(self: Stack) -> str:
     raise OSError("not listening")
+
+
+class _ListeningClient:
+    """Stand in for the rpc client: it answers where the port is listening."""
+
+    def __init__(self, url: str, cookie_path: Path) -> None:
+        self.port = int(url.rsplit(":", 1)[1])
+
+    def call(self, method: str) -> None:
+        socket.create_connection(("127.0.0.1", self.port), timeout=1).close()
+
+
+@pytest.fixture
+def node_script(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """Return the stand-in node as a `bitcoind` path, with its client."""
+    path = tmp_path / "bitcoind"
+    path.write_text(f"#!{sys.executable}\n{NODE}")
+    path.chmod(0o755)
+    monkeypatch.setattr(stack_module, "BitcoinCoreRpcClient", _ListeningClient)
+    return str(path)
+
+
+def test_a_node_on_a_taken_port_is_started_again_on_another(
+    tmp_path: Path,
+    node_script: str,
+    held_port: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The first rpc port is taken; the second try holds a fresh one."""
+    _first_port_is(monkeypatch, held_port)
+    process, _, port = start_on_free_ports(lambda: _start_node(node_script, tmp_path))
+    try:
+        assert port != held_port
+        assert process.poll() is None
+    finally:
+        _stop(process)
+
+
+def test_a_taken_rpc_port_on_the_last_attempt_is_raised(
+    tmp_path: Path, node_script: str, held_port: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With one attempt, the taken port is raised as `PortTaken`."""
+    _first_port_is(monkeypatch, held_port)
+    with pytest.raises(PortTaken, match="Unable to bind any endpoint"):
+        start_on_free_ports(lambda: _start_node(node_script, tmp_path), attempts=1)
+
+
+def test_a_node_that_exits_for_another_reason_fails_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exit that does not name a taken port is not retried."""
+    quiet = tmp_path / "bitcoind"
+    quiet.write_text(f"#!{sys.executable}\n")
+    quiet.chmod(0o755)
+    monkeypatch.setattr(stack_module, "BitcoinCoreRpcClient", _ListeningClient)
+    with pytest.raises(pytest.fail.Exception, match="bitcoind exited with 0"):
+        _start_node(str(quiet), tmp_path)
