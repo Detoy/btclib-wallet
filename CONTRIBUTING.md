@@ -739,8 +739,12 @@ published upstream as vectors, and adding one means regenerating it:
 
 ```shell
 uvx detect-secrets scan --baseline .secrets.baseline
+git add .secrets.baseline
 uv run --locked --only-group lint pre-commit run detect-secrets --all-files
 ```
+
+The hook fails on a baseline that has unstaged changes, and each rewrite
+leaves it unstaged again.
 
 Read the diff before committing it: a new entry is a finding somebody has
 to have looked at, which is the whole point of a baseline over an
