@@ -1168,7 +1168,7 @@ behind  0 revisions; that commit is the tip of the path
 ```text
 repo    rust-bitcoin/rust-bitcoin
 path    bitcoin/tests/data/psbt_fuzz1.hex
-commit  9aebb96fb99e8e9e019663659c6eff851a62f2ce  2024-11-26
+commit  9aebb96fb99e8e9e019663659c6eff851a62f2ce  2024-11-27
 blob    dd3c9b7ed9d26677f2c2b1737e98224cd762227c
 ours    e8df2b34efafd8e2c87e1b62da3278d84fd48ab4
 pulled  2026-10-11
@@ -1190,7 +1190,7 @@ with different origins. This file and `psbt_fuzz2.hex` are that pair.
 ```text
 repo    rust-bitcoin/rust-bitcoin
 path    bitcoin/tests/data/psbt_fuzz2.hex
-commit  9aebb96fb99e8e9e019663659c6eff851a62f2ce  2024-11-26
+commit  9aebb96fb99e8e9e019663659c6eff851a62f2ce  2024-11-27
 blob    8a33cf01c83924d371860946cf15a1bd8cf76fd0
 ours    56508bdf6f436e5175ef0b00165fe1e75237c326
 pulled  2026-10-11
