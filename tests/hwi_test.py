@@ -1064,6 +1064,34 @@ def test_a_bare_name_on_windows_is_run_as_an_exe_and_never_as_a_batch_file(
     assert _on_path("hwi") is None
 
 
+def test_a_name_with_a_directory_part_is_checked_as_the_file_it_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`is_available` answers about the file such a name runs, and no other.
+
+    CreateProcess runs a name with a directory part unchanged: it appends
+    no `.exe` and runs no batch file. So `<dir>/hwi` is available where
+    `<dir>` holds `hwi` and not where it holds only `hwi.CMD`, whichever
+    interpreter asks. `sys.platform` is switched along with the Windows
+    rules, so that a `shutil.which` call, which tries each PATHEXT
+    extension there, would take its Windows reading on every platform.
+    """
+    monkeypatch.setattr(hwi_module, "_WINDOWS", True)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("PATHEXT", os.pathsep.join([".COM", ".EXE", ".BAT", ".CMD"]))
+    batch, plain = tmp_path / "batch", tmp_path / "plain"
+    for directory, name in [(batch, "hwi.CMD"), (plain, DEFAULT_EXECUTABLE)]:
+        directory.mkdir()
+        (directory / name).write_text("", encoding="ascii")
+        (directory / name).chmod(0o755)
+    assert not is_available(str(batch / DEFAULT_EXECUTABLE))
+    assert not is_available([str(batch / DEFAULT_EXECUTABLE), "--flag"])
+    assert is_available(str(plain / DEFAULT_EXECUTABLE))
+    # a directory is not a file to run, whatever its name
+    (tmp_path / "nested" / DEFAULT_EXECUTABLE).mkdir(parents=True)
+    assert not is_available(str(tmp_path / "nested" / DEFAULT_EXECUTABLE))
+
+
 def test_btclib_runs_the_commands_hwi_publishes(tmp_path: Path) -> None:
     """Every command sent is one of the six, spelled as HWI takes it.
 

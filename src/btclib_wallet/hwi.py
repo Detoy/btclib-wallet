@@ -135,7 +135,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -281,6 +280,15 @@ def _file_name(name: str) -> str:
     return name + ".exe" if _WINDOWS and "." not in name else name
 
 
+def _runnable(path: str) -> bool:
+    """Whether `path` names a file this process may execute, as it stands.
+
+    It is the one test of both lookups, so that a bare name found on the
+    PATH and a name with a directory part are held to the same test.
+    """
+    return pathlib.Path(path).is_file() and os.access(path, os.X_OK)
+
+
 def _on_path(name: str) -> str | None:
     """Return the absolute path of the bare `name` on the PATH, or None.
 
@@ -293,7 +301,7 @@ def _on_path(name: str) -> str | None:
     for directory in os.environ.get("PATH", os.defpath).split(os.pathsep):
         if pathlib.Path(directory).is_absolute():
             path = str(pathlib.Path(directory) / _file_name(name))
-            if pathlib.Path(path).is_file() and os.access(path, os.X_OK):
+            if _runnable(path):
                 return path
     return None
 
@@ -336,17 +344,20 @@ def is_available(executable: str | Sequence[str] = DEFAULT_EXECUTABLE) -> bool:
     A bare name is looked up only in the absolute directories of the PATH,
     never in the current directory, and the path found is what every
     command runs. A name with a directory part is not looked up on the
-    PATH: it is handed to `shutil.which`, which on Windows with Python
-    3.12 or later tries it with each PATHEXT extension appended, and as
-    it stands only where it already ends in one, while the command runs
-    it unchanged.
+    PATH: it is checked as the file it names, which is what the command
+    runs, since CreateProcess appends no `.exe` to a name that contains a
+    path. `shutil.which` is not asked, because on Windows with Python 3.12
+    or later it tries such a name with each PATHEXT extension appended,
+    and as it stands only where it already ends in one.
 
     True is not a promise that a device will answer, or that what is on
     the PATH is HWI at all: it is that there is something to run, which
     is the half of it a caller cannot find out without running one.
     """
     name = _executable(executable)[0]
-    return (_on_path(name) if _is_bare(name) else shutil.which(name)) is not None
+    if _is_bare(name):
+        return _on_path(name) is not None
+    return _runnable(name)
 
 
 def _watch(
