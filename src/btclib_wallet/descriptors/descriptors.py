@@ -428,6 +428,8 @@ _MUSIG_ONE_MULTIPATH = (
 # the functions whose whole argument Core reads as one key, "," included,
 # where the ending "(" is at `endpos`: the descriptor ones and miniscript's
 _WHOLE_KEY_FUNCTION = re.compile(r"(?:^|[(,{:])(?:pk|pkh|wpkh|combo|pk_k|pk_h)\($")
+# the functions whose first argument Core reads as a key, at `endpos` as above
+_KEY_FUNCTION = re.compile(r"(?:^|[(,{:])(?:pk|pkh|wpkh|combo|pk_k|pk_h|tr|rawtr)\($")
 
 
 def _argument_ends(text: str) -> tuple[list[int], dict[int, int], dict[int, int]]:
@@ -534,7 +536,11 @@ def _assert_key_opening(
     # Core counts a key's "]" and checks its "[" before it reads the key
     if opens and text[start - 1] != "]" and not name:
         _assert_no_origin_end(_count(origin_ends, key.start, key.stop))
-    if name and item[0].strip() == "musig":
+    if (
+        name
+        and item[0].strip() == "musig"
+        and _KEY_FUNCTION.search(text, max(start - 7, 0), start)
+    ):
         # Core reads a musig() in a key's place as the key, whose item ends
         # at the ")" and not here
         _assert_key_item(item[0].rstrip())

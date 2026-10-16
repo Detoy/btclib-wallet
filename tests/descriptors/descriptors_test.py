@@ -2144,20 +2144,33 @@ def test_a_key_holds_no_whitespace() -> None:
         for function in (parse, multipath_descriptors):
             with pytest.raises(BTClibValueError, match=rf"^musig\(\): {fault}"):
                 function(descriptor)
-    # a space by a function name is a fault of the script, which `parse`
-    # refuses and multipath_descriptors leaves unread; a musig() in a key's
-    # place is read as the key, up to its ")"
+
+
+def test_a_space_by_a_function_name_is_no_key_fault() -> None:
+    """Leave a space by a function name to `parse`, but in a key's place.
+
+    Core reads a function where a script stands, and refuses the script,
+    never the key: `parse` refuses it, and `multipath_descriptors` leaves
+    it unread. A ``musig()`` where a key stands is read as the key, up to
+    its ")", so a space before it is the key's whitespace (issue #443).
+    """
+    message = "^Key is invalid due to whitespace$"
+    musig = f"musig({MUSIG_XPUB_A},{MUSIG_XPUB_B})"
     for descriptor in (
         f"wsh( pk({KEY}))",
         f"sh( wpkh({KEY}))",
-        f"tr(musig ({MUSIG_XPUB_A},{MUSIG_XPUB_B}))",
+        f"tr({musig[:5]} {musig[5:]})",
     ):
         assert multipath_descriptors(descriptor) == [add_checksum(descriptor)]
         with pytest.raises(BTClibValueError):
             parse(descriptor)
-    for function in (parse, multipath_descriptors):
-        with pytest.raises(BTClibValueError, match=message):
-            function(f"tr( musig({MUSIG_XPUB_A},{MUSIG_XPUB_B}))")
+    for descriptor in (f"tr( {musig})", f"pkh( {musig})"):
+        for function in (parse, multipath_descriptors):
+            with pytest.raises(BTClibValueError, match=message):
+                function(descriptor)
+    # where no key may stand, the musig() is refused for its position
+    with pytest.raises(BTClibValueError, match=r"^musig\(\) is only allowed in tr"):
+        multipath_descriptors(f"wsh( {musig})")
 
 
 def test_a_slash_introduces_a_path_step() -> None:
