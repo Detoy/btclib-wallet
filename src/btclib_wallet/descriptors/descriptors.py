@@ -530,10 +530,18 @@ def _assert_key_opening(
     """
     start, end = item.start(), item.end()
     opens = key.start == whole.start or key.start not in whole
+    name = text[end : end + 1] == "("
     # Core counts a key's "]" and checks its "[" before it reads the key
-    if opens and text[start - 1] != "]" and text[end : end + 1] != "(":
+    if opens and text[start - 1] != "]" and not name:
         _assert_no_origin_end(_count(origin_ends, key.start, key.stop))
-    if key.start == whole.start:
+    if name and item[0].strip() == "musig":
+        # Core reads a musig() in a key's place as the key, whose item ends
+        # at the ")" and not here
+        _assert_key_item(item[0].rstrip())
+    elif name:
+        # a function name, whose fault `parse` reports
+        _assert_no_glued_step(item[0])
+    elif key.start == whole.start:
         # read whole, the key item runs to the first "/", "," included
         _assert_key_item(text[start : whole.stop].partition("/")[0])
     elif opens:

@@ -2144,6 +2144,20 @@ def test_a_key_holds_no_whitespace() -> None:
         for function in (parse, multipath_descriptors):
             with pytest.raises(BTClibValueError, match=rf"^musig\(\): {fault}"):
                 function(descriptor)
+    # a space by a function name is a fault of the script, which `parse`
+    # refuses and multipath_descriptors leaves unread; a musig() in a key's
+    # place is read as the key, up to its ")"
+    for descriptor in (
+        f"wsh( pk({KEY}))",
+        f"sh( wpkh({KEY}))",
+        f"tr(musig ({MUSIG_XPUB_A},{MUSIG_XPUB_B}))",
+    ):
+        assert multipath_descriptors(descriptor) == [add_checksum(descriptor)]
+        with pytest.raises(BTClibValueError):
+            parse(descriptor)
+    for function in (parse, multipath_descriptors):
+        with pytest.raises(BTClibValueError, match=message):
+            function(f"tr( musig({MUSIG_XPUB_A},{MUSIG_XPUB_B}))")
 
 
 def test_a_slash_introduces_a_path_step() -> None:
