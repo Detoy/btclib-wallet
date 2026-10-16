@@ -57,7 +57,7 @@ btclib-wallet is a library in its caller's process, like btclib, with two
 differences ARCHITECTURE.md's own sections name: it runs a subprocess
 (`hwi.py`, Bitcoin Core's HWI) when a caller asks it to reach a hardware
 device, and it opens client sockets of its own (`fetch/`) when a caller
-asks it to reach a node, an explorer or an Electrum server. Neither
+asks it to reach a node, an explorer, an Electrum server or a p2p peer. Neither
 happens on import, and neither happens unless the caller constructs the
 object or calls the function that does it, such as `hwi.enumerate_devices`.
 The command below lists the top-level name of every
@@ -80,11 +80,13 @@ EOF
 Beside this package's imports of its own modules, its dependencies
 `btclib`, `btclib_ecc`, `btclib_mnemonics`, `bitcoin_core_rpc` and
 `typing_extensions`, and btclib's `btclib_secp256k1`, what it lists is
-the standard library: `subprocess` is `hwi.py`'s alone, `socket` and `ssl` are `fetch.transport`'s,
-`urllib` is `bip21.py`'s percent-encoding of a payment URI, and `random`
-is `coin_selection.py`'s shuffle, marked `# noqa: S311` at both call
-sites because what it orders is which of the caller's own utxos is spent
-first, never a key or a nonce.
+the standard library: `subprocess` is `hwi.py`'s alone, `ssl` is
+`fetch.transport`'s, `socket` is `fetch.transport`'s and
+`fetch.peer_transport`'s, `urllib` is `bip21.py`'s percent-encoding of a
+payment URI and `fetch.esplora`'s check of its base URL, and `random` is
+`coin_selection.py`'s shuffle, marked `# noqa: S311` at both call sites
+because what it orders is which of the caller's own utxos is spent first,
+never a key or a nonce.
 
 **What is defended.**
 
@@ -120,10 +122,10 @@ first, never a key or a nonce.
 - An oracle sending an announcement its key did not sign, or an attestation
   that does not match the announcement. *Trust boundaries* says whose key
   that is.
-- A backend `fetch/` talks to — a node, an explorer, an Electrum server —
-  answering a question about the chain with something false; SECURITY.md's
-  *A backend is trusted, and not every backend alike* states which
-  answers are checked and which rest on the backend's word.
+- A backend `fetch/` talks to — a node, an explorer, an Electrum server, a
+  peer — answering a question about the chain with something false;
+  SECURITY.md's *A backend is trusted, and not every backend alike* states
+  which answers are checked and which rest on the backend's word.
 - A device or an HWI subprocess this package drives, returning a
   fingerprint, a signature or a derived key that does not belong to the
   request it was asked to answer — the reason
@@ -146,7 +148,9 @@ time ends* and *A backend is trusted, and not every backend alike*:
 - the resistance to side channels of whatever cipher a caller passes
   `btclib_wallet.bip38`, which takes AES-256 as two callables
 - the privacy of a lookup against `EsploraFetcher`, `BitcoinCoreRestFetcher`
-  or `ElectrumFetcher`: each learns every txid and outpoint asked of it
+  or `ElectrumFetcher`: each learns every txid and outpoint asked of it;
+  and against `CompactFilterFetcher`'s peer, whose view SECURITY.md's
+  *A backend is trusted, and not every backend alike* states
 - the operating system, the interpreter, or the HWI binary or hardware
   device this package's caller names
 
@@ -233,8 +237,8 @@ SECURITY.md's *A backend is trusted, and not every backend alike* is the
 full statement of what is checked at that boundary and what is not:
 a transaction id is recomputed and refused unless it matches, a header's
 proof of work is checked, and a height or a
-tip hash rests on the backend's word except through `ElectrumFetcher`'s own
-merkle proof.
+tip hash rests on the backend's word except where that section names a
+check the fetcher makes itself.
 `TlsLineTransport` verifies the server's certificate and host name by
 default. `Broadcaster.broadcast` checks that the backend named the txid
 this package computed and nothing checks that the transaction went on to

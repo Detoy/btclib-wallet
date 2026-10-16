@@ -161,16 +161,21 @@ used to teach and to prototype as much as to build.
     trusted on whoever handed it over. `EsploraFetcher` and
     `ElectrumFetcher` talk to a host that says it validated, and compare
     the genesis block against the one the network names, which cannot
-    tell two signets apart.
+    tell two signets apart. `CompactFilterFetcher` compares the parent of
+    the first block its peer serves with that genesis block too, and
+    refuses a message that does not start with the network's message start
+    bytes. For signet those are the default signet's, so a peer on a
+    signet of its own is refused.
 - **The answers a fetch makes are checked to different degrees.** A
     transaction's id is recomputed from the bytes that came back and
     refused unless it matches, and an output's amount is derived from
     that same transaction. A block header is parsed and its proof of
     work checked: its hash within the target its bits claim, and that
     target within the limit of the fetcher's network. Neither check says
-    it is the header at the height asked for. A height, and
-    the tip hash from every backend but `ElectrumFetcher`, rest on the
-    backend's word. The work each network's limit stands for, in bits, is:
+    it is the header at the height asked for. A height rests on the
+    backend's word except from `CompactFilterFetcher`, and so does the
+    tip hash except from `ElectrumFetcher` and `CompactFilterFetcher`.
+    The work each network's limit stands for, in bits, is:
 
     ```shell
     uv run python -c "
@@ -183,13 +188,45 @@ used to teach and to prototype as much as to build.
     "
     ```
 
-- **`ElectrumFetcher` is the one backend that can prove an answer.**
+- **`ElectrumFetcher` can prove an answer.**
     `get_tx_merkle` and `verify_tx` check a transaction's branch against
     a header the fetcher fetched itself, so a caller who runs the check
     learns that the transaction is in the block that header names. That
     is the trade the Esplora backend's fallback makes: it cannot say a
     transaction is confirmed. `TlsLineTransport` verifies the server's
     certificate and host name by default.
+- **`CompactFilterFetcher` checks the chain it follows and trusts one peer
+    for the rest.** Every header connects to the one before it, carries the
+    work its bits claim and carries the bits the retarget rules require
+    (`btclib.block.header_context.next_bits_required`); the median time past
+    and the clock are not asked. No chain with less work than the network's
+    `minimum_chain_work` is accepted. A fork is followed only if it ends
+    with more work than the chain it displaces; otherwise the chain held is
+    put back if it has the minimum work, and dropped if not. Every
+    `cfheaders` answers the request it came from and chains from the filter
+    header held. Every `cfilter` is the filter of the block asked for and
+    hashes, chained to the filter header before it, to the filter header
+    held. Every block downloaded is one that was asked for, whose header is
+    the one in the chain and which passes `Block.assert_valid_structure`
+    (its merkle root and witness commitment among the checks). The filter
+    headers are the peer's word: BIP157 compares them with the checkpoints
+    of other peers, this fetcher has one, and a peer that lies in them can
+    hide a block that pays the wallet. A peer can hold back the network's
+    newer blocks and serve blocks of its own on the tip it showed, and
+    invent a payment in them; that costs the work of those blocks, not a
+    majority of the network's. On signet nothing checks the signature that
+    makes a block authoritative, so the work of those blocks is signet's low
+    difficulty. A peer can serve a block with every witness removed, which
+    passes, and the caller then has its transactions with no witness to
+    read; a block with a witness changed, or with some of them removed, is
+    refused. The peer can keep a synchronization going, and the fetcher's
+    headers growing in memory, for as long as it sends headers that pass the
+    checks, the minimum work being checked when a synchronization ends
+    without failing ([ISS
+    354](https://github.com/btclib-org/btclib-wallet/issues/354)). It also
+    decides which blocks are downloaded, up to the `max_blocks` of the call,
+    and sees which they are; it is given no script. Use a peer you trust, or
+    run several fetchers and compare.
 - **An explorer learns every txid and outpoint you look up**, which is a
     good deal of what a wallet is. A public deployment is named as a
     constant and never as a default, so nothing here contacts anyone

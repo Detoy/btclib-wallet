@@ -75,7 +75,8 @@ def client_errors() -> Iterator[None]:
     `transport` rather than a call into this package directly: a
     `LineTransport` that cannot answer raises this same vocabulary, its
     own docstring says so, and this is where that translation happens
-    for every one of that fetcher's calls.
+    for every one of that fetcher's calls. `CompactFilterFetcher`'s `_send`,
+    `_next` and `close` are the same wrap over a `PeerTransport`.
 
     The fields are what make this a translation rather than a blanket
     wrap: `status` and `code` are the whole reason those two classes
@@ -176,9 +177,9 @@ class Fetcher(ABC):
     additive; widening the return type of `get_tx` would be a break for everyone
     already calling it.
 
-    `get_tx_out` is concrete, and is the one operation every backend can
-    derive from another: an output is a field of the transaction that
-    created it. A backend with a cheaper answer overrides it.
+    `get_tx_out` is concrete: an output is a field of the transaction that
+    created it, so a backend that serves `get_tx` serves this too. A
+    backend with a cheaper answer overrides it.
     """
 
     network: str
@@ -210,27 +211,27 @@ class Fetcher(ABC):
     def get_block_header(self, height: int) -> BlockHeader:
         """Return the header of the block at this height.
 
-        Height, and not hash: every backend here answers for a hash and
-        maps a height to one with a second call -- `getblockhash`,
-        `/block-height/<height>`, `/blockhashbyheight/<height>.bin` --
-        but the Electrum protocol's `blockchain.block.header` takes a
-        height and publishes no call that takes a hash at all. A hash-only
-        signature would be one an Electrum backend could never answer, which is
-        the `NotImplementedError`-in-an-ABC outcome the questions above
-        already avoid.
+        Height, and not hash: the Electrum protocol's
+        `blockchain.block.header` takes a height and publishes no call that
+        takes a hash, so a hash-only signature would be one an Electrum
+        backend could never answer. A node or an explorer maps a height to
+        a hash with a second call, and `CompactFilterFetcher` reads it from
+        the header chain it holds.
 
-        Checked on arrival by `block_header_from_raw`, which says how.
+        Checked on arrival, by `block_header_from_raw` where a backend
+        reads the header raw, and by `CompactFilterFetcher` when it syncs
+        its chain: `assert_valid` and `assert_valid_pow`.
         `assert_valid_time` is not among the checks -- it compares against
         the local clock, and a header that is genuinely on the chain should
         not start failing this because the machine running it has
         drifted.
 
-        That is the whole of what the check establishes. Not that the
-        header is on the chain the caller means, not that it is truly at
-        the height asked for, and not that it is the tip: a backend
-        serving a real header from the wrong chain, or from the wrong
-        height, passes it just the same. Only a chain of headers answers
-        that, which is not this method's question.
+        This method promises no more than that check. It does not say the
+        header is on the chain the caller means, nor that it is truly at
+        the height asked for, nor that it is the tip: a backend serving a
+        real header from the wrong chain, or from the wrong height, passes
+        it just the same. Only a chain of headers answers that, which is
+        not this method's question.
         """
 
     def get_tx_out(self, out_point: OutPoint) -> TxOut:
@@ -336,10 +337,10 @@ class NetworkVerifyingFetcher(Fetcher):
 def tx_id_hex(tx_id: Octets) -> str:
     """Return the display hex of a transaction id, checking it is one.
 
-    Every backend puts the id in a request as hex, and each accepts
-    whatever `Octets` accepts, so each needs the same 32-byte check --
-    performed here rather than left to the backend, which would otherwise
-    report a mistyped id as the remote host's 404.
+    Every backend that asks for a transaction puts the id in a request as
+    hex, and each accepts whatever `Octets` accepts, so each needs the same
+    32-byte check -- performed here rather than left to the backend, which
+    would otherwise report a mistyped id as the remote host's 404.
     """
     return bytes_from_octets(tx_id, 32).hex()
 
@@ -347,12 +348,12 @@ def tx_id_hex(tx_id: Octets) -> str:
 def tx_from_raw(raw: Octets, tx_id: str, network: str) -> Tx:
     """Return the transaction a serialization holds, if it is the one asked for.
 
-    Every backend answers `get_tx` with the serialization rather than with
-    a rendering of it, and this is why: the id is a hash of those bytes,
-    so recomputing it says whether what arrived is what was asked for. A
-    height is taken on the backend's word and a block header answers for
-    itself, which `SECURITY.md` states per answer rather than here; this
-    one costs a hash of a few hundred bytes.
+    Every backend that serves `get_tx` answers it with the serialization
+    rather than with a rendering of it, and this is why: the id is a hash
+    of those bytes, so recomputing it says whether what arrived is what was
+    asked for. A height is taken on the backend's word and a block header
+    answers for itself, which `SECURITY.md` states per answer rather than
+    here; this one costs a hash of a few hundred bytes.
 
     It is not only the untrusted backend it guards. A node behind a
     caching proxy, a truncated response and a request that raced another
@@ -377,16 +378,15 @@ def tx_from_raw(raw: Octets, tx_id: str, network: str) -> Tx:
 def block_header_height(height: int) -> int:
     """Return the height, refusing what no chain has a block at.
 
-    Every backend maps a height to a block before it can answer
-    `get_block_header` at all -- `getblockhash`, `/block-height/<height>`,
-    `/blockhashbyheight/<height>.bin` -- so each needs the same guard in
-    front of that first request, rather than each discovering its own
-    backend's answer to a negative or fractional height: RPC code -8 for
-    Core, a 404 or a 400 for an Esplora deployment, neither naming the
-    height as what is wrong with the request. `-rest` alone does -- a 400
-    whose body is `Invalid height: <text>` -- and the guard still stands
-    in front of it, so that they answer the same exception for the
-    same mistake rather than one of them a better one.
+    Every backend takes a height from its caller, and
+    `Fetcher.get_block_header` says how each turns it into an answer. Each
+    needs the same guard in front of its first request, rather than each
+    discovering its own backend's answer to a negative or fractional
+    height: RPC code -8 for Core, a 404 or a 400 for an Esplora deployment,
+    neither naming the height as what is wrong with the request. `-rest`
+    alone does -- a 400 whose body is `Invalid height: <text>` -- and the
+    guard still stands in front of it, so that they answer the same
+    exception for the same mistake rather than one of them a better one.
     """
     if not is_integer(height):
         raise BTClibTypeError(f"invalid height type: {type(height).__name__}")
@@ -398,7 +398,7 @@ def block_header_height(height: int) -> int:
 def block_header_from_raw(raw: Octets, height: int, *, network: str) -> BlockHeader:
     """Return the header a serialization holds, checked on arrival.
 
-    Every backend answers with the raw serialization rather than a
+    The backends that call this get the raw serialization rather than a
     rendering of it, the way `get_tx` does -- but a header names no
     height and no chain of its own, so there is nothing here to recompute
     it against the way `tx_from_raw` recomputes a txid. What is checked

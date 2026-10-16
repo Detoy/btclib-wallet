@@ -170,13 +170,18 @@ it answers in btclib's own types, `Tx`, `TxOut` and `BlockHeader`.
 `BitcoinCoreFetcher` over a full node's JSON-RPC, `BitcoinCoreRestFetcher`
 over the same node's unauthenticated `-rest` interface, `EsploraFetcher`
 over a block explorer's HTTP API, `ElectrumFetcher` over an Electrum
-server — so calling code takes a `Fetcher` and never branches on which
-one it got. `Broadcaster` and `FeeEstimator` are two further protocols a
+server, `CompactFilterFetcher` over a peer's BIP157 filters — so calling
+code takes a `Fetcher` and never branches on which one it got.
+`CompactFilterFetcher`'s docstrings say what it serves of `Fetcher` and what
+its `scan_blocks` does.
+`Broadcaster` and `FeeEstimator` are two further protocols a
 backend may or may not satisfy: `BitcoinCoreRestFetcher` answers neither,
 Core's `-rest` interface being read-only and carrying no fee estimation.
 `fetch.transport` is the client seam — one HTTP connection per call, one
 kept open across calls, and `TlsLineTransport` for the Electrum line
-protocol — and the codec each backend speaks belongs to `btclib.p2p` or
+protocol — and `fetch.peer_transport` is the seam of the p2p peer:
+`TcpPeerTransport` holds one TCP connection to it, plain and without
+authentication. The codec each backend speaks belongs to `btclib.p2p` or
 `btclib.electrum`, outside this package: importing `fetch` costs
 `urllib`, `ssl` and `socket`, never the reverse.
 
@@ -202,7 +207,7 @@ wallet's own boundary — descriptors, PSBTs, extended keys, payment URIs
 — the wallets that remember what they have handed out, the one contract
 an external signer answers to, the transactions and signatures of a
 discreet log contract, and the clients that reach a node, an
-explorer or an Electrum server for what the chain currently holds.
+explorer, an Electrum server or a p2p peer for what the chain currently holds.
 `tests/imports_test.py` mirrors the edges above, and `tests/fuzz_test.py`
 holds every parser named here to one contract: it fails the way the
 library says it fails, whatever it is handed, never with a bare
