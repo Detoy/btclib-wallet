@@ -2094,6 +2094,31 @@ def test_a_path_step_holds_no_whitespace() -> None:
     assert key_expression.origin.der_path == [0x80000000]
 
 
+def test_a_key_holds_no_whitespace() -> None:
+    """Refuse a key with leading or trailing whitespace, as Core does.
+
+    Core's ``ParsePubkeyInner`` refuses a key item whose first or last
+    character is ``IsSpace`` (`src/script/descriptor.cpp`), with
+    "Key '...' is invalid due to whitespace". The message leaves out the
+    key. A descriptor that Core refuses cannot be imported into Core
+    (issue #443).
+    """
+    message = "^Key is invalid due to whitespace$"
+    for descriptor in (
+        f"pkh({XPUB} /0)",
+        f"pkh( {XPUB})",
+        f"pkh({XPUB} )",
+        f"pkh([deadbeef]{XPUB} )",
+        f"wpkh({XPUB} )",
+        f"pkh( {KEY})",
+        f"multi(1,{KEY},{XPUB} /0)",
+    ):
+        with pytest.raises(BTClibValueError, match=message):
+            parse(descriptor)
+    with pytest.raises(BTClibValueError, match=message):
+        multipath_descriptors(f"multi(1,{KEY},{XPUB} /0/<0;1>/*)")
+
+
 def test_a_slash_introduces_a_path_step() -> None:
     """A `/` with nothing after it is an empty step, not no path (issue #116).
 
