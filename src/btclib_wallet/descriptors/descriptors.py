@@ -204,6 +204,7 @@ from btclib_wallet.descriptors.key_expression import (
     _HARDENED_MUSIG_STEP,
     _MISSING_ORIGIN_END,
     _ONE_ITEM_STEP,
+    _ORIGIN_WITHOUT_START,
     _RANGED_PARTICIPANT,
     _SEVERAL_ORIGIN_ENDS,
     _WILDCARDS,
@@ -492,6 +493,18 @@ def _assert_one_origin_end(origin_ends: int) -> None:
         raise BTClibValueError(err_msg)
 
 
+def _assert_no_origin_end(origin_ends: int) -> None:
+    """Refuse a "]" in a key that does not open with "[", as Core does.
+
+    Core's ``ParsePubkey`` counts the "]" first, then checks the "[",
+    and only then reads the key itself.
+    """
+    if origin_ends > 1:
+        raise BTClibValueError(_SEVERAL_ORIGIN_ENDS)
+    if origin_ends:
+        raise BTClibValueError(_ORIGIN_WITHOUT_START)
+
+
 def _reads_past_origin(key: str) -> bool:
     """Answer whether Core reads past a key's origin.
 
@@ -614,10 +627,20 @@ def _assert_multipath_items(text: str) -> None:
             # a lone "/" is the empty element after it
             _assert_origin_path_element("" if item == "/" else item)
         elif item != "/" and text[start - 1 : start] in {"]", "(", ","}:
+            key_end = (closes if key_start == whole.start else ends).get(
+                key_start, len(text)
+            )
+            # Core reads a key's origin before the key, so where a key opens
+            # here, and this is no function name, the origin is checked first
+            if (
+                text[start - 1] != "]"
+                and text[end : end + 1] != "("
+                and (key_start == whole.start or key_start not in whole)
+            ):
+                _assert_no_origin_end(_count(origin_ends, key_start, key_end))
             # a key follows "]", "(" or ","; nothing else there holds "<" or ">"
             # in a valid descriptor
             _assert_key_item(item)
-            key_end = ends.get(key_start, len(text))
             numeric = (
                 text[end : end + 1] == "/"
                 and _is_extended_key(item)
@@ -3863,17 +3886,18 @@ def multipath_descriptors(descriptor: str) -> list[str]:
 
     The expansion is textual, as BIP389 defines it, and each result is a
     descriptor to be parsed on its own. As Bitcoin Core does, it refuses a
-    key whose "[" has no "]" or more than one, a key origin fingerprint
-    that is not 8 hex digits, a key origin path element that is a step or
-    no index, a step glued to a key, a step that is not a whole path
-    element, a key path with two ``<a;b>`` steps, a step with fewer than
-    two elements, an element of an extended key's path that is no index
-    or a step there with a repeated value, a ``musig()`` outside ``tr()``
-    and ``rawtr()``, a ``musig()`` path beside a ranged participant where
-    every participant is an extended key, a hardened item of a multipath
-    step in the path of a ``musig()`` that starts an argument, where it
-    reads that path, and a ``musig()`` multipath in both its participants
-    and its path.
+    key whose "[" has no "]" or more than one, a key holding a "]" that does
+    not open with "[", a key with leading or trailing whitespace, a key
+    origin fingerprint that is not 8 hex digits, a key origin path element
+    that is a step or no index, a step glued to a key, a step that is not a
+    whole path element, a key path with two ``<a;b>`` steps, a step with
+    fewer than two elements, an element of an extended key's path that is no
+    index or a step there with a repeated value, a ``musig()`` outside
+    ``tr()`` and ``rawtr()``, a ``musig()`` path beside a ranged participant
+    where every participant is an extended key, a hardened item of a
+    multipath step in the path of a ``musig()`` that starts an argument,
+    where it reads that path, and a ``musig()`` multipath in both its
+    participants and its path.
     """
     text = strip_checksum(descriptor)
     _assert_multipath_items(text)

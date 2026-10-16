@@ -2117,6 +2117,15 @@ def test_a_key_holds_no_whitespace() -> None:
             parse(descriptor)
     with pytest.raises(BTClibValueError, match=message):
         multipath_descriptors(f"multi(1,{KEY},{XPUB} /0/<0;1>/*)")
+    # Core reads the origin before the key: a space before "[" is a key
+    # that does not open with "["
+    for descriptor in (f"pkh( [deadbeef]{XPUB})", f"pkh( [deadbeef]{XPUB}/<0;1>/*)"):
+        for function in (parse, multipath_descriptors):
+            with pytest.raises(BTClibValueError, match=r"^'\]' without the '\['"):
+                function(descriptor)
+    for function in (parse, multipath_descriptors):
+        with pytest.raises(BTClibValueError, match=r"^more than one '\]'"):
+            function(f"pkh( [deadbeef]]{XPUB})")
 
 
 def test_a_slash_introduces_a_path_step() -> None:

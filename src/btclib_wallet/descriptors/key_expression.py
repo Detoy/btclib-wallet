@@ -665,6 +665,7 @@ def _neutered(xkey: str, prv_keys: dict[str, str]) -> str:
 
 _SEVERAL_ORIGIN_ENDS = "more than one ']' in a single key expression"
 _MISSING_ORIGIN_END = "missing ']' in the key origin"
+_ORIGIN_WITHOUT_START = "']' without the '[' that opens a key origin"
 
 
 def _origin_and_rest(expression: str) -> tuple[BIP32KeyOrigin | None, str, str]:
@@ -677,7 +678,7 @@ def _origin_and_rest(expression: str) -> tuple[BIP32KeyOrigin | None, str, str]:
         raise BTClibValueError(_SEVERAL_ORIGIN_ENDS)
     if not expression.startswith("["):
         if "]" in expression:
-            raise BTClibValueError("']' without the '[' that opens a key origin")
+            raise BTClibValueError(_ORIGIN_WITHOUT_START)
         return None, "", expression
     end = expression.find("]")
     if end < 0:
