@@ -526,13 +526,22 @@ def _assert_key_item(key: str) -> None:
 
     Leading or trailing whitespace is Core's ``IsSpace`` check on the key
     item (`ParsePubkeyInner`), with "Key '...' is invalid due to
-    whitespace". ``<`` or ``>`` is a multipath step glued to the key, as in
-    ``xprv...<0;1>/*``, which Core reports as "key '...' is not valid".
-    Both messages leave out the key, which can be a private one.
+    whitespace"; the message here leaves out the key. Then
+    `_assert_no_glued_step`.
     """
     # ASCII whitespace alone: the six characters of Core's ``IsSpace``
     if key and (key[0] in string.whitespace or key[-1] in string.whitespace):
         raise BTClibValueError("Key is invalid due to whitespace")
+    _assert_no_glued_step(key)
+
+
+def _assert_no_glued_step(key: str) -> None:
+    """Refuse ``<`` or ``>`` in a key item, as Core does.
+
+    That is a multipath step glued to the key, as in ``xprv...<0;1>/*``,
+    which Core reports as "key '...' is not valid". The message leaves out
+    the key, which can be a private one, as no message here echoes one.
+    """
     if "<" in key or ">" in key:
         raise BTClibValueError("key is not valid")
 

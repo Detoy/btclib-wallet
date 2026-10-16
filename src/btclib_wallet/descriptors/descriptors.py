@@ -143,7 +143,8 @@ import operator
 import re
 from abc import ABC, abstractmethod
 from bisect import bisect_left, bisect_right
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, fields, replace
 from typing import Any, cast
@@ -217,6 +218,7 @@ from btclib_wallet.descriptors.key_expression import (
     _assert_key_path_element,
     _assert_musig_allowed,
     _assert_network,
+    _assert_no_glued_step,
     _assert_origin_path_element,
     _assert_prv_keys,
     _derived_once,
@@ -505,6 +507,41 @@ def _assert_no_origin_end(origin_ends: int) -> None:
         raise BTClibValueError(_ORIGIN_WITHOUT_START)
 
 
+@contextmanager
+def _prefixed(prefix: str) -> Iterator[None]:
+    """Put `prefix` before the message of a BTClibValueError raised inside."""
+    try:
+        yield
+    except BTClibValueError as e:
+        if not prefix:
+            raise
+        raise BTClibValueError(f"{prefix}{e}") from e
+
+
+def _assert_key_opening(
+    text: str, item: re.Match[str], key: range, whole: range, origin_ends: list[int]
+) -> None:
+    """Refuse the faults Core reads in a key item: its origin, then the item.
+
+    `item` follows "]", "(" or ",", where a key or a function name starts;
+    nothing else there holds "<" or ">" in a valid descriptor. `key` is
+    where its key lies, `whole` the argument Core reads as one key, if any
+    (`_whole_argument`), and `origin_ends` where the text holds a "]".
+    """
+    start, end = item.start(), item.end()
+    opens = key.start == whole.start or key.start not in whole
+    # Core counts a key's "]" and checks its "[" before it reads the key
+    if opens and text[start - 1] != "]" and text[end : end + 1] != "(":
+        _assert_no_origin_end(_count(origin_ends, key.start, key.stop))
+    if key.start == whole.start:
+        # read whole, the key item runs to the first "/", "," included
+        _assert_key_item(text[start : whole.stop].partition("/")[0])
+    elif opens:
+        _assert_key_item(item[0])
+    else:
+        _assert_no_glued_step(item[0])
+
+
 def _reads_past_origin(key: str) -> bool:
     """Answer whether Core reads past a key's origin.
 
@@ -630,17 +667,12 @@ def _assert_multipath_items(text: str) -> None:
             key_end = (closes if key_start == whole.start else ends).get(
                 key_start, len(text)
             )
-            # Core reads a key's origin before the key, so where a key opens
-            # here, and this is no function name, the origin is checked first
-            if (
-                text[start - 1] != "]"
-                and text[end : end + 1] != "("
-                and (key_start == whole.start or key_start not in whole)
-            ):
-                _assert_no_origin_end(_count(origin_ends, key_start, key_end))
-            # a key follows "]", "(" or ","; nothing else there holds "<" or ">"
-            # in a valid descriptor
-            _assert_key_item(item)
+            # a musig() participant's fault takes Core's "musig(): " prefix
+            inside = any(s <= start < c for c, s in musig_ends.items())
+            with _prefixed("musig(): " if inside else ""):
+                _assert_key_opening(
+                    text, match, range(key_start, key_end), whole, origin_ends
+                )
             numeric = (
                 text[end : end + 1] == "/"
                 and _is_extended_key(item)

@@ -2126,6 +2126,24 @@ def test_a_key_holds_no_whitespace() -> None:
     for function in (parse, multipath_descriptors):
         with pytest.raises(BTClibValueError, match=r"^more than one '\]'"):
             function(f"pkh( [deadbeef]]{XPUB})")
+    # pkh() reads its whole argument as one key, "," included, so the
+    # space after the "," is inside the key: `parse` refuses the key, and
+    # multipath_descriptors leaves it unread
+    inside = f"pkh({XPUB}, {KEY})"
+    assert multipath_descriptors(inside) == [add_checksum(inside)]
+    with pytest.raises(BTClibValueError, match="^invalid key expression$"):
+        parse(inside)
+    for function in (parse, multipath_descriptors):
+        with pytest.raises(BTClibValueError, match=message):
+            function(f"pkh({XPUB},{KEY} )")
+    # Core prefixes a musig() participant's fault with "musig(): "
+    for descriptor, fault in (
+        (f"tr(musig( {MUSIG_XPUB_A},{MUSIG_XPUB_B}))", message[1:]),
+        (f"tr(musig( [deadbeef]{MUSIG_XPUB_A},{MUSIG_XPUB_B}))", r"'\]' without"),
+    ):
+        for function in (parse, multipath_descriptors):
+            with pytest.raises(BTClibValueError, match=rf"^musig\(\): {fault}"):
+                function(descriptor)
 
 
 def test_a_slash_introduces_a_path_step() -> None:
